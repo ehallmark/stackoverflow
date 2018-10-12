@@ -1,7 +1,12 @@
 package scrape;
 
+import org.apache.commons.io.FileUtils;
+
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.InputStreamReader;
+import java.net.URL;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -11,9 +16,13 @@ import java.util.concurrent.TimeUnit;
 public class ManageScrapers {
 
     public static void main(String[] args) throws Exception {
+        File proxyFile = new File("proxies.csv");
+        FileUtils.copyURLToFile(new URL("http://api.buyproxies.org/?a=showProxies&pid=107699&key=03b14c878d7bd334fee346f40fd2e4e4"), proxyFile);
+        String[] proxies = FileUtils.readFileToString(proxyFile, Charset.defaultCharset()).split("\\n");
+        final int numProxies = proxies.length;
+        System.out.println("Found "+numProxies+" proxies.");
         List<Process> running = new ArrayList<>();
         try {
-            final int numProxies = 50;
             final List<Thread> threads = new ArrayList<>();
             for (int proxyIdx = 0; proxyIdx < numProxies; proxyIdx++) {
                 final int _proxyIdx = proxyIdx;
