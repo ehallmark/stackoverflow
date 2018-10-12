@@ -90,6 +90,7 @@ public class Scraper {
                 }
             }
         }
+        Collections.shuffle(proxyIndices, new Random(System.currentTimeMillis()));
         List<Thread> threads = new ArrayList<>();
         for(int i = 0; i < proxyIps.size(); i++) {
             final String proxyIp = proxyIps.get(i);
