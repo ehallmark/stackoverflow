@@ -51,11 +51,11 @@ public class Scraper {
     }
 
     public static void main(String[] args) throws Exception {
-        scrapeWithProxy(Integer.valueOf(args[0]), Integer.valueOf(args[1]));
+        scrapeWithProxy(Integer.valueOf(args[0]), Integer.valueOf(args[1]), Integer.valueOf(args[2]));
     }
 
 
-    static void scrapeWithProxy(final int proxyIdx, final int numProxies) throws Exception {
+    static void scrapeWithProxy(final int proxyIdx, final int sequential, final int numProxies) throws Exception {
         System.out.println("Starting proxy: "+proxyIdx);
         System.setProperty("webdriver.chrome.driver", "/usr/bin/chromedriver");
         System.setProperty("webdriver.firefox.driver", "/usr/bin/geckodriver");
@@ -63,9 +63,11 @@ public class Scraper {
         File proxyFile = new File("proxies.csv"+proxyIdx);
         FileUtils.copyURLToFile(new URL("http://api.buyproxies.org/?a=showProxies&pid=107699&key=03b14c878d7bd334fee346f40fd2e4e4"), proxyFile);
         String[] proxies = FileUtils.readFileToString(proxyFile, Charset.defaultCharset()).split("\\n");
-        String proxy = proxies[proxyIdx];
-        proxyIps.add(proxy.split(":")[0]);
-        System.out.println("Proxy: " + proxy);
+        for(int p = 0; p < proxies.length; p++) {
+            String proxy = proxies[p];
+            proxyIps.add(proxy.split(":")[0]);
+            System.out.println("Proxy: " + proxy);
+        }
 
         final String urlPrefix = "https://stackoverflow.com/questions/";
 
@@ -74,84 +76,61 @@ public class Scraper {
         final int bound = 50000000;
         boolean reseed = false;
         final boolean ingesting = false;
-        long timeSleep = 2000;
+        long timeSleep = 1000;
 
         File folder = new File("/home/ehallmark/data/stack_overflow/");
-        Set<Integer> alreadySeen = Collections.emptySet();
-        /*Stream.of(folder.listFiles())
-                .map(f->Integer.valueOf(f.getName().replace(".gzip","")))
-                .collect(Collectors.toSet()); */
-
-       // Collections.shuffle(proxyIndices, new Random(System.currentTimeMillis()));
-        List<Thread> threads = new ArrayList<>();
-        for(int i = 0; i < proxyIps.size(); i++) {
-            final String proxyIp = proxyIps.get(i);
-            Thread thread = new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    IntStream.range(1, bound+1).filter(i->i % numProxies==proxyIdx).forEach(i->{
-                        String url = urlPrefix + i + "/";
-                        File overviewFile = new File(folder, String.valueOf(i) + ".gzip");
-                        if (!ingesting && (!overviewFile.exists() || reseed)) {
+        final Random rand = new Random(System.currentTimeMillis());
+        while(true) {
+            int i = rand.nextInt(bound)+1;
+            if(i % numProxies==proxyIdx) {
+                for(int j = 0; j < sequential; j++) {
+                    final int idIndex = i+j;
+                    final String url = urlPrefix + idIndex + "/";
+                    int pIdx = (i%numProxies)+j;
+                    final String proxyIp = proxyIps.get(pIdx);
+                    File overviewFile = new File(folder, String.valueOf(idIndex) + ".gzip");
+                    if (!ingesting && (!overviewFile.exists() || reseed)) {
+                        try {
+                            String page;
+                            System.out.println("Searching for (idx: " + pIdx + "): " + url);
+                            Pair<String, String> dump;
                             try {
-                                String page;
-                                System.out.println("Searching for (idx: "+proxyIdx+"): " + url);
-                                Pair<String, String> dump;
-                                try {
-                                    dump = TestProxyPass.dump(proxyIp, url);//driver.get(url);
-                                } catch(FileNotFoundException e) {
-                                    System.out.println("File not found: "+url);
-                                    dump = new Pair<>("", url);
-                                } catch(Exception e) {
-                                    System.out.println("Too many requests... Sleeping...");
-                                    TimeUnit.MINUTES.sleep(10);
-                                    return;
-                                }
-                                if(dump==null) {
-                                    System.out.println("Null");
-                                    return;
-                                }
-                                String currentUrl = dump.getValue(); //driver.getCurrentUrl();
-                                System.out.println("Current url (idx: "+proxyIdx+"): " + currentUrl);
-                                page = dump.getKey();//driver.getPageSource();
-                                if (page != null && page.length() > 0) {
-                                    page = currentUrl+"\n"+page;
-                                    //Document document = Jsoup.parse(page);
-                                    //System.out.println("Found page: "+page);
-                                    if (!overviewFile.getParentFile().exists()) {
-                                        overviewFile.getParentFile().mkdir();
-                                    }
-                                    writeToGzip(page, overviewFile);
-                                }
-                                // driver.close();
-                                TimeUnit.MILLISECONDS.sleep(timeSleep);
+                                dump = TestProxyPass.dump(proxyIp, url);//driver.get(url);
+                            } catch (FileNotFoundException e) {
+                                System.out.println("File not found: " + url);
+                                dump = new Pair<>("", url);
                             } catch (Exception e) {
-                                e.printStackTrace();
+                                System.out.println("Too many requests... Sleeping...");
+                                TimeUnit.MINUTES.sleep(10);
+                                return;
                             }
-
+                            if (dump == null) {
+                                System.out.println("Null");
+                                return;
+                            }
+                            String currentUrl = dump.getValue(); //driver.getCurrentUrl();
+                            System.out.println("Current url (idx: " + pIdx + "): " + currentUrl);
+                            page = dump.getKey();//driver.getPageSource();
+                            if (page != null && page.length() > 0) {
+                                page = currentUrl + "\n" + page;
+                                //Document document = Jsoup.parse(page);
+                                //System.out.println("Found page: "+page);
+                                if (!overviewFile.getParentFile().exists()) {
+                                    overviewFile.getParentFile().mkdir();
+                                }
+                                writeToGzip(page, overviewFile);
+                            }
+                            // driver.close();
+                            TimeUnit.MILLISECONDS.sleep(timeSleep);
+                        } catch (Exception e) {
+                            e.printStackTrace();
                         }
-                      //  if (overviewFile.exists()) {
-                       //     try {
-                                //   String page;
-                                //   page = readFromGzip(overviewFile);
 
-                        //    } catch(Exception e) {
-                       //         e.printStackTrace();
-                       //         return;
-                       //     }
-                       // }
-                    });
-                    //conn.commit();
-                    //driver.quit();
+                    }
                 }
-            });
-            thread.start();
-            threads.add(thread);
+            }
         }
 
-        for(Thread thread : threads) {
-            thread.join();
-        }
     }
 
 
