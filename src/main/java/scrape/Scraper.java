@@ -76,7 +76,7 @@ public class Scraper {
         final int bound = 50000000;
         boolean reseed = false;
         final boolean ingesting = false;
-        long timeSleep = 500;
+        long timeSleep = 1000;
 
         File folder = new File("/home/ehallmark/data/stack_overflow/");
         final Random rand = new Random(System.currentTimeMillis());
@@ -103,11 +103,12 @@ public class Scraper {
                             dump = new Pair<>("", url);
                         } catch (Exception e) {
                             System.out.println("Too many requests... Sleeping...");
-                            TimeUnit.MINUTES.sleep(10);
+                            TimeUnit.MINUTES.sleep(30);
                             continue;
                         }
                         if (dump == null) {
                             System.out.println("Null");
+                            TimeUnit.MILLISECONDS.sleep(timeSleep);
                             continue;
                         }
                         String currentUrl = dump.getValue(); //driver.getCurrentUrl();

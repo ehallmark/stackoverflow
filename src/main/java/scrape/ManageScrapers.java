@@ -23,11 +23,11 @@ public class ManageScrapers {
         String[] proxies = FileUtils.readFileToString(proxyFile, Charset.defaultCharset()).split("\\n");
         final int numProxies = proxies.length;
         System.out.println("Found "+numProxies+" proxies.");
-        final int sequential = 1;
+        final int sequential = 2;
         List<Process> running = new ArrayList<>();
         int startProxy = 0;
-        int endProxy = 130;
-        ExecutorService service = Executors.newFixedThreadPool(endProxy-startProxy + 5);
+        int endProxy = 200;
+        ExecutorService service = Executors.newFixedThreadPool(endProxy-startProxy+1);
         try {
             for (int proxyIdx = startProxy; proxyIdx < endProxy; proxyIdx+=sequential) {
                 final int _proxyIdx = proxyIdx;
@@ -35,7 +35,7 @@ public class ManageScrapers {
                     @Override
                     public void run() {
                         try {
-                            String cmd = "java -cp target/classes:\"target/dependency/*\" -Xms250m -Xmx250m -Djdk.http.auth.tunneling.disabledSchemes=\"\" scrape.Scraper " + _proxyIdx + " " + sequential + " " + numProxies;
+                            String cmd = "java -cp target/classes:\"target/dependency/*\" -Xms220m -Xmx220m -Djdk.http.auth.tunneling.disabledSchemes=\"\" scrape.Scraper " + _proxyIdx + " " + sequential + " " + numProxies;
                             ProcessBuilder builder = new ProcessBuilder("/bin/bash", "-c", cmd);
                             builder.redirectErrorStream(true);
                             Process p = builder.start();
