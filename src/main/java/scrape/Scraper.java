@@ -76,14 +76,14 @@ public class Scraper {
         final int bound = 50000000;
         boolean reseed = false;
         final boolean ingesting = false;
-        long timeSleep = 1000;
+        long timeSleep = 2000;
 
         File folder = new File("/home/ehallmark/data/stack_overflow/");
         final Random rand = new Random(System.currentTimeMillis());
         int c = 0;
         while(true) {
             c++;
-            int i = c; //rand.nextInt(bound)+1;
+            int i = rand.nextInt(bound)+1;
             if(i % numProxies==proxyIdx) {
                 for(int j = 0; j < sequential; j++) {
                     final int idIndex = i+j;
@@ -104,11 +104,11 @@ public class Scraper {
                             } catch (Exception e) {
                                 System.out.println("Too many requests... Sleeping...");
                                 TimeUnit.MINUTES.sleep(10);
-                                return;
+                                continue;
                             }
                             if (dump == null) {
                                 System.out.println("Null");
-                                return;
+                                continue;
                             }
                             String currentUrl = dump.getValue(); //driver.getCurrentUrl();
                             System.out.println("Current url (idx: " + pIdx + "): " + currentUrl);

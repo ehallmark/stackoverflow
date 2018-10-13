@@ -11,6 +11,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 public class ManageScrapers {
@@ -21,19 +23,19 @@ public class ManageScrapers {
         String[] proxies = FileUtils.readFileToString(proxyFile, Charset.defaultCharset()).split("\\n");
         final int numProxies = proxies.length;
         System.out.println("Found "+numProxies+" proxies.");
-        final int sequential = 2;
+        final int sequential = 1;
         List<Process> running = new ArrayList<>();
         int startProxy = 0;
         int endProxy = 200;
+        ExecutorService service = Executors.newFixedThreadPool(endProxy-startProxy);
         try {
-            final List<Thread> threads = new ArrayList<>();
             for (int proxyIdx = startProxy; proxyIdx < endProxy; proxyIdx+=sequential) {
                 final int _proxyIdx = proxyIdx;
-                Thread thread = new Thread(new Runnable() {
+                service.execute(new Runnable() {
                     @Override
                     public void run() {
                         try {
-                            String cmd = "java -cp target/classes:\"target/dependency/*\" -Xms300m -Xmx300m -Djdk.http.auth.tunneling.disabledSchemes=\"\" scrape.Scraper " + _proxyIdx + " " + sequential + " " + numProxies;
+                            String cmd = "java -cp target/classes:\"target/dependency/*\" -Xms250m -Xmx250m -Djdk.http.auth.tunneling.disabledSchemes=\"\" scrape.Scraper " + _proxyIdx + " " + sequential + " " + numProxies;
                             ProcessBuilder builder = new ProcessBuilder("/bin/bash", "-c", cmd);
                             builder.redirectErrorStream(true);
                             Process p = builder.start();
@@ -52,12 +54,10 @@ public class ManageScrapers {
                         }
                     }
                 });
-                thread.start();
-                threads.add(thread);
             }
-            for (Thread thread : threads) {
-                thread.join();
-            }
+            service.shutdown();
+            service.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
+
         } catch(Exception e) {
             e.printStackTrace();
         } finally {
