@@ -76,7 +76,7 @@ public class Scraper {
         final int bound = 50000000;
         boolean reseed = false;
         final boolean ingesting = false;
-        long timeSleep = 2000;
+        long timeSleep = 500;
 
         File folder = new File("/home/ehallmark/data/stack_overflow/");
         final Random rand = new Random(System.currentTimeMillis());
@@ -84,51 +84,50 @@ public class Scraper {
         while(true) {
             c++;
             int i = rand.nextInt(bound)+1;
-            if(i % numProxies==proxyIdx) {
-                for(int j = 0; j < sequential; j++) {
-                    final int idIndex = i+j;
-                    final String url = urlPrefix + idIndex + "/";
-                    int pIdx = (i%numProxies)+j;
-                    final String proxyIp = proxyIps.get(pIdx);
-                    File overviewFile = new File(folder, String.valueOf(idIndex) + ".gzip");
-                    if (!ingesting && (!overviewFile.exists() || reseed)) {
+            while(i % numProxies!=proxyIdx) i++;
+            for(int j = 0; j < sequential; j++) {
+                final int idIndex = i+j;
+                final String url = urlPrefix + idIndex + "/";
+                int pIdx = (i%numProxies)+j;
+                final String proxyIp = proxyIps.get(pIdx);
+                File overviewFile = new File(folder, String.valueOf(idIndex) + ".gzip");
+                if (!ingesting && (!overviewFile.exists() || reseed)) {
+                    try {
+                        String page;
+                        System.out.println("Searching for (idx: " + pIdx + "): " + url);
+                        Pair<String, String> dump;
                         try {
-                            String page;
-                            System.out.println("Searching for (idx: " + pIdx + "): " + url);
-                            Pair<String, String> dump;
-                            try {
-                                dump = TestProxyPass.dump(proxyIp, url);//driver.get(url);
-                            } catch (FileNotFoundException e) {
-                                System.out.println("File not found: " + url);
-                                dump = new Pair<>("", url);
-                            } catch (Exception e) {
-                                System.out.println("Too many requests... Sleeping...");
-                                TimeUnit.MINUTES.sleep(10);
-                                continue;
-                            }
-                            if (dump == null) {
-                                System.out.println("Null");
-                                continue;
-                            }
-                            String currentUrl = dump.getValue(); //driver.getCurrentUrl();
-                            System.out.println("Current url (idx: " + pIdx + "): " + currentUrl);
-                            page = dump.getKey();//driver.getPageSource();
-                            if (page != null && page.length() > 0) {
-                                page = currentUrl + "\n" + page;
-                                //Document document = Jsoup.parse(page);
-                                //System.out.println("Found page: "+page);
-                                if (!overviewFile.getParentFile().exists()) {
-                                    overviewFile.getParentFile().mkdir();
-                                }
-                                writeToGzip(page, overviewFile);
-                            }
-                            // driver.close();
-                            TimeUnit.MILLISECONDS.sleep(timeSleep);
+                            dump = TestProxyPass.dump(proxyIp, url);//driver.get(url);
+                        } catch (FileNotFoundException e) {
+                            System.out.println("File not found: " + url);
+                            dump = new Pair<>("", url);
                         } catch (Exception e) {
-                            e.printStackTrace();
+                            System.out.println("Too many requests... Sleeping...");
+                            TimeUnit.MINUTES.sleep(10);
+                            continue;
                         }
-
+                        if (dump == null) {
+                            System.out.println("Null");
+                            continue;
+                        }
+                        String currentUrl = dump.getValue(); //driver.getCurrentUrl();
+                        System.out.println("Current url (idx: " + pIdx + "): " + currentUrl);
+                        page = dump.getKey();//driver.getPageSource();
+                        if (page != null && page.length() > 0) {
+                            page = currentUrl + "\n" + page;
+                            //Document document = Jsoup.parse(page);
+                            //System.out.println("Found page: "+page);
+                            if (!overviewFile.getParentFile().exists()) {
+                                overviewFile.getParentFile().mkdir();
+                            }
+                            writeToGzip(page, overviewFile);
+                        }
+                        // driver.close();
+                        TimeUnit.MILLISECONDS.sleep(timeSleep);
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
+
                 }
             }
         }

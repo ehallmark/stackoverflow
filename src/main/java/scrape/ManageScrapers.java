@@ -26,8 +26,8 @@ public class ManageScrapers {
         final int sequential = 1;
         List<Process> running = new ArrayList<>();
         int startProxy = 0;
-        int endProxy = 200;
-        ExecutorService service = Executors.newFixedThreadPool(endProxy-startProxy);
+        int endProxy = 130;
+        ExecutorService service = Executors.newFixedThreadPool(endProxy-startProxy + 5);
         try {
             for (int proxyIdx = startProxy; proxyIdx < endProxy; proxyIdx+=sequential) {
                 final int _proxyIdx = proxyIdx;
@@ -54,6 +54,7 @@ public class ManageScrapers {
                         }
                     }
                 });
+                TimeUnit.MILLISECONDS.sleep(10);
             }
             service.shutdown();
             service.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
