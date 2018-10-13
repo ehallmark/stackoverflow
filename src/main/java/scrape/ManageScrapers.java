@@ -30,7 +30,7 @@ public class ManageScrapers {
                     @Override
                     public void run() {
                         try {
-                            String cmd = "java -cp target/classes:\"target/dependency/*\" -Xms1024m -Xmx1024m -Djdk.http.auth.tunneling.disabledSchemes=\"\" scrape.Scraper " + _proxyIdx + " " + numProxies;
+                            String cmd = "java -cp target/classes:\"target/dependency/*\" -Xms400m -Xmx400m -Djdk.http.auth.tunneling.disabledSchemes=\"\" scrape.Scraper " + _proxyIdx + " " + numProxies;
                             ProcessBuilder builder = new ProcessBuilder("/bin/bash", "-c", cmd);
                             builder.redirectErrorStream(true);
                             Process p = builder.start();

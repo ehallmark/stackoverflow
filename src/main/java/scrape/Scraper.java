@@ -73,34 +73,23 @@ public class Scraper {
         //conn.setAutoCommit(false);
         final int bound = 50000000;
         boolean reseed = false;
-        final boolean remainingOnly = true;
         final boolean ingesting = false;
         long timeSleep = 2000;
 
         File folder = new File("/home/ehallmark/data/stack_overflow/");
-        Set<Integer> alreadySeen = Stream.of(folder.listFiles())
+        Set<Integer> alreadySeen = Collections.emptySet();
+        /*Stream.of(folder.listFiles())
                 .map(f->Integer.valueOf(f.getName().replace(".gzip","")))
-                .collect(Collectors.toSet());
+                .collect(Collectors.toSet()); */
 
-        List<Integer> proxyIndices = new ArrayList<>();
-        for(int i = 1; i <= bound; i++) {
-            if(!remainingOnly || !alreadySeen.contains(i)) {
-                if(i % numProxies==proxyIdx) {
-                    proxyIndices.add(i);
-                }
-            }
-        }
-        Collections.shuffle(proxyIndices, new Random(System.currentTimeMillis()));
+       // Collections.shuffle(proxyIndices, new Random(System.currentTimeMillis()));
         List<Thread> threads = new ArrayList<>();
         for(int i = 0; i < proxyIps.size(); i++) {
             final String proxyIp = proxyIps.get(i);
-            System.out.println("Num proxy indices: "+proxyIndices.size());
             Thread thread = new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    System.out.println("Num remaining: "+proxyIndices.size());
-                    LongStream indicesStream = proxyIndices.stream().mapToLong(i->i);
-                    indicesStream.forEach(i->{
+                    IntStream.range(1, bound+1).filter(i->i % numProxies==proxyIdx).forEach(i->{
                         String url = urlPrefix + i + "/";
                         File overviewFile = new File(folder, String.valueOf(i) + ".gzip");
                         if (!ingesting && (!overviewFile.exists() || reseed)) {
