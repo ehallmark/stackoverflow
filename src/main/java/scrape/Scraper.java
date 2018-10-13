@@ -80,8 +80,10 @@ public class Scraper {
 
         File folder = new File("/home/ehallmark/data/stack_overflow/");
         final Random rand = new Random(System.currentTimeMillis());
+        int c = 0;
         while(true) {
-            int i = rand.nextInt(bound)+1;
+            c++;
+            int i = c; //rand.nextInt(bound)+1;
             if(i % numProxies==proxyIdx) {
                 for(int j = 0; j < sequential; j++) {
                     final int idIndex = i+j;
