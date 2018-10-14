@@ -3,7 +3,6 @@ package extract;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-import org.jsoup.nodes.TextNode;
 import org.jsoup.select.Elements;
 import scrape.Scraper;
 
@@ -84,9 +83,7 @@ public class ExtractToSQL {
             int numLinked = links.size();
             for(Element assoc : links) {
                 int assocId = Integer.valueOf(assoc.select("a.question-hyperlink").attr("href").split("/")[4]);
-            //    System.out.println("Link id: "+assocId);
             }
-          //  System.out.println("Num links: "+numLinked);
 
         }
         // related
@@ -120,7 +117,6 @@ public class ExtractToSQL {
             for (Element userDetail : userDetails) {
                 String user = userDetail.child(0).text();
                 String repStr = userDetail.select(".reputation-score").text().toLowerCase().trim();
-             //   System.out.println("repStr: " + repStr);
                 boolean hasK = repStr.contains("k");
                 boolean hasM = repStr.contains("m");
                 repStr = repStr.replace("k", "").replace("m", "").replace(",", "");
@@ -135,16 +131,8 @@ public class ExtractToSQL {
                         userReputation = 0;
                     }
                 }
-               // System.out.println("user: " + user);
-              //  System.out.println("userReputation: " + userReputation);
             }
         }
-
-      //  System.out.println("voteCount: "+ voteCount);
-      //  System.out.println("accepted: "+ accepted);
-      //  System.out.println("answerDate: "+ answerDate);
-       // System.out.println("text: "+ text);
-
         // comments
         Elements comments = post.select(".comments .comment");
         for(Element comment : comments) {
@@ -171,10 +159,6 @@ public class ExtractToSQL {
                     userReputation = 0;
                 }
             }
-          //  System.out.println("Comment user: " + user);
-         //   System.out.println("Comment userReputation: " + userReputation);
-          //  System.out.println("Comment commentText: " + commentText);
-        //    System.out.println("Comment commentDate: " + commentDate);
         }
     }
 
