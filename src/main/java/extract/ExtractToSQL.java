@@ -7,6 +7,7 @@ import org.jsoup.select.Elements;
 import scrape.Scraper;
 
 import java.io.File;
+import java.sql.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.atomic.AtomicLong;
@@ -14,6 +15,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class ExtractToSQL {
 
     public static void main(String[] args) throws Exception {
+        final Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost/stackoverflow?user=postgres&password=password&tcpKeepAlive=true");
         final int bound = 50000000;
         final File folder = new File("/home/ehallmark/data/stack_overflow/");
         final AtomicLong cnt = new AtomicLong(0);
@@ -29,9 +31,13 @@ public class ExtractToSQL {
                         String pageContent = payload.substring(xmlStart);
                         Document doc = Jsoup.parse(pageContent);
                         // handle page
-                        handlePage(pageTitle, i, doc);
-                        if(cnt.getAndIncrement()%100==9999) {
-                            System.out.println("Seen: "+cnt.get());
+                        try {
+                            handlePage(pageTitle, i, doc, conn);
+                            if (cnt.getAndIncrement() % 100 == 9999) {
+                                System.out.println("Seen: " + cnt.get());
+                            }
+                        } catch(Exception e) {
+                            e.printStackTrace();
                         }
                     }
                 }
@@ -39,7 +45,7 @@ public class ExtractToSQL {
         }
     }
 
-    private static void handlePage(String pageTitle, int id, Document doc) {
+    private static void handlePage(String pageTitle, int id, Document doc, Connection conn) throws SQLException {
         System.out.println("Title "+id+": "+pageTitle);
         String questionName = doc.select("#question-header a.question-hyperlink").text().trim();
         String pageHref = doc.select("#question-header a.question-hyperlink").attr("href");
@@ -57,18 +63,21 @@ public class ExtractToSQL {
                 System.out.println("Status user: "+user);
             }
         }
+        PreparedStatement questionPs = conn.prepareStatement("");
         System.out.println("Is Closed: "+closed);
         {
+            //PreparedStatement ps = conn.prepareStatement();
             Elements post = doc.select("#question .post-layout");
             if(post.size()>0) {
-                handlePost(post.get(0), true);
+                handlePost(post.get(0), id, true, questionPs, conn);
             } else {
                 return;
             }
         }
         Elements answers = doc.select("#answers .answer");
+        PreparedStatement answerPs = conn.prepareStatement("insert into answers values (?,?,?,?,?,?) on conflict do nothing");
         for(Element post : answers) {
-            handlePost(post, false);
+            handlePost(post, id, false, answerPs, conn);
         }
 
         // qinfo
@@ -99,8 +108,14 @@ public class ExtractToSQL {
         }
     }
 
-    private static void handlePost(Element post, boolean isQuestion) {
+    private static void handlePost(Element post, int questionId, boolean isQuestion, PreparedStatement ps, Connection conn) throws SQLException {
         // handle post
+        final String table;
+        if(isQuestion) {
+            table = "questions";
+        } else {
+            table = "answers";
+        }
         int voteCount = Integer.valueOf(post.select(".vote-count-post").text());
         String text = post.select(".post-text").text();
         String html = post.select(".post-text").html();
@@ -133,9 +148,13 @@ public class ExtractToSQL {
                 }
             }
         }
+        ps.setInt(1, voteCount);
+
         // comments
+        PreparedStatement commentPs = conn.prepareStatement("insert into "+table+" values (?,?,?,?,?,?,?) on conflict do nothing");
         Elements comments = post.select(".comments .comment");
         for(Element comment : comments) {
+            int commentId = Integer.valueOf(comment.attr("id").split("-")[1].trim());
             String commentText = comment.select(".comment-body .comment-copy").text();
             String commentHtml = comment.select(".comment-body .comment-copy").html();
             LocalDate commentDate = LocalDate.parse(
@@ -159,6 +178,13 @@ public class ExtractToSQL {
                     userReputation = 0;
                 }
             }
+            commentPs.setInt(1, questionId);
+            commentPs.setInt(2, commentId);
+            commentPs.setString(3, commentText);
+            commentPs.setString(4, commentHtml);
+            commentPs.setDate(5, Date.valueOf(commentDate));
+            commentPs.setString(6, user);
+            commentPs.setObject(7, userReputation);
         }
     }
 

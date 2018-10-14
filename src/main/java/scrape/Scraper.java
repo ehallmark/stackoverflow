@@ -76,7 +76,7 @@ public class Scraper {
         final int bound = 50000000;
         boolean reseed = false;
         final boolean ingesting = false;
-        long timeSleep = 1800;
+        long timeSleep = 2500;
 
         File folder = new File("/home/ehallmark/data/stack_overflow/");
         final Random rand = new Random(System.currentTimeMillis());
