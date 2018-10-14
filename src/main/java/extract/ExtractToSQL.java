@@ -5,13 +5,10 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import scrape.Scraper;
-
 import java.io.File;
 import java.sql.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.concurrent.atomic.AtomicLong;
-
 public class ExtractToSQL {
 
     public static void main(String[] args) throws Exception {
@@ -19,12 +16,17 @@ public class ExtractToSQL {
         conn.setAutoCommit(false);
         final int bound = 50000000;
         final File folder = new File("/home/ehallmark/data/stack_overflow/");
-        final AtomicLong cnt = new AtomicLong(0);
-        for(int i = 1; i < bound; i++) {
+        for(int i = 642300; i < bound; i++) {
             File file = new File(folder, String.valueOf(i) + ".gzip");
             if(file.exists()) {
-                String payload = Scraper.readFromGzip(file);
-            //    System.out.println("Payload: "+payload);
+                String payload;
+                try {
+                    payload = Scraper.readFromGzip(file);
+                } catch(Exception e) {
+                    e.printStackTrace();
+                    System.out.println("Invalid file: "+file.getName());
+                    continue;
+                }
                 if(payload!=null) {
                     int xmlStart = payload.indexOf("<");
                     if(xmlStart > 0) {
@@ -34,12 +36,13 @@ public class ExtractToSQL {
                         // handle page
                         try {
                             handlePage(pageTitle, i, doc, conn);
-                            if (cnt.getAndIncrement() % 100 == 99) {
-                                System.out.println("Seen: " + cnt.get());
+                            if (i % 100 == 99) {
+                                System.out.println("Seen: " + i);
                                 conn.commit();
                             }
                         } catch(Exception e) {
                             e.printStackTrace();
+                            System.exit(0);
                         }
                     }
                 }
@@ -54,12 +57,16 @@ public class ExtractToSQL {
         String pageHref = doc.select("#question-header a.question-hyperlink").attr("href");
         PreparedStatement questionPs = conn.prepareStatement("insert into questions values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) on conflict do nothing");
         {
-            //PreparedStatement ps = conn.prepareStatement();
             Elements post = doc.select("#question .post-layout");
             if (post.size() > 0) {
                 // qinfo
                 Elements qInfo = doc.select("#qinfo");
-                int numViews = Integer.valueOf(qInfo.select("tr").get(1).select("td").get(1).text().split(" ")[0].replace(",", ""));
+                int numViews;
+                try {
+                    numViews = Integer.valueOf(qInfo.select("tr").get(1).select("td").get(1).text().split(" ")[0].replace(",", ""));
+                } catch(Exception e) {
+                    numViews = 0;
+                }
                 boolean closed = questionName.endsWith("[closed]");
                 questionPs.setInt(1, id);
                 int baseQuestionId = Integer.valueOf(pageHref.split("/")[2]);
@@ -92,6 +99,7 @@ public class ExtractToSQL {
                 questionPs.setString(8, reason);
                 questionPs.setInt(20, numViews);
                 handlePost(post.get(0), id, true, 8, questionPs, conn);
+                //System.out.println("PS: " + questionPs.toString());
                 questionPs.executeUpdate();
                 questionPs.close();
             } else {
@@ -119,10 +127,15 @@ public class ExtractToSQL {
             PreparedStatement ps = conn.prepareStatement("insert into question_links values (?,?) on conflict do nothing");
             Elements links = doc.select(".sidebar-linked .spacer").not(".more");
             for(Element assoc : links) {
-                int assocId = Integer.valueOf(assoc.select("a.question-hyperlink").attr("href").split("/")[4]);
-                ps.setInt(1, id);
-                ps.setInt(2, assocId);
-                ps.executeUpdate();
+                //System.out.println("Linked: "+assoc.html());
+                try {
+                    int assocId = Integer.valueOf(assoc.select("a.question-hyperlink").attr("href").replace("https://stackoverflow.com", "").split("/")[2]);
+                    ps.setInt(1, id);
+                    ps.setInt(2, assocId);
+                    ps.executeUpdate();
+                } catch(Exception e) {
+
+                }
             }
             ps.close();
 
@@ -132,10 +145,15 @@ public class ExtractToSQL {
             PreparedStatement ps = conn.prepareStatement("insert into question_related values (?,?) on conflict do nothing");
             Elements related = doc.select(".sidebar-related .spacer").not(".more");
             for(Element assoc : related) {
-                int assocId = Integer.valueOf(assoc.select("a.question-hyperlink").attr("href").split("/")[4]);
-                ps.setInt(1, id);
-                ps.setInt(2, assocId);
-                ps.executeUpdate();
+                // System.out.println("Related: "+assoc.html());
+                try {
+                    int assocId = Integer.valueOf(assoc.select("a.question-hyperlink").attr("href").replace("https://stackoverflow.com", "").split("/")[2]);
+                    ps.setInt(1, id);
+                    ps.setInt(2, assocId);
+                    ps.executeUpdate();
+                } catch(Exception e) {
+
+                }
             }
             ps.close();
         }
@@ -158,9 +176,9 @@ public class ExtractToSQL {
         psIdx++;
         ps.setInt(psIdx, voteCount);
         psIdx++;
-        ps.setString(psIdx, text);
+        ps.setString(psIdx, text.replace("\u0000", ""));
         psIdx++;
-        ps.setString(psIdx, html);
+        ps.setString(psIdx, html.replace("\u0000", ""));
         psIdx++;
         ps.setBoolean(psIdx, accepted);
         psIdx++;
@@ -225,7 +243,7 @@ public class ExtractToSQL {
             }
             ps.setObject(psIdx, null);
             ps.setObject(psIdx+1, null);
-            ps.setDate(psIdx+2, Date.valueOf(date));
+            ps.setDate(psIdx+2, date==null ? null : Date.valueOf(date));
         }
         if(!foundEditor) {
             ps.setObject(psIdx+3, null);

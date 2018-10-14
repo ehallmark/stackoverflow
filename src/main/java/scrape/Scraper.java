@@ -47,7 +47,7 @@ public class Scraper {
             line = gz.readLine();
         }
         gz.close();
-        return sj.toString();
+        return sj.toString(); //.replaceAll("\u0000", "");
     }
 
     public static void main(String[] args) throws Exception {
@@ -55,7 +55,7 @@ public class Scraper {
     }
 
 
-    static void scrapeWithProxy(final int proxyIdx, final int sequential, final int numProxies) throws Exception {
+    static void scrapeWithProxy(int proxyIdx, final int sequential, final int numProxies) throws Exception {
         System.out.println("Starting proxy: "+proxyIdx);
         System.setProperty("webdriver.chrome.driver", "/usr/bin/chromedriver");
         System.setProperty("webdriver.firefox.driver", "/usr/bin/geckodriver");
@@ -76,13 +76,23 @@ public class Scraper {
         final int bound = 50000000;
         boolean reseed = false;
         final boolean ingesting = false;
-        long timeSleep = 2500;
+        long timeSleep = 2000;
+        long switchEveryNTries = 30 * 10;
 
         File folder = new File("/home/ehallmark/data/stack_overflow/");
         final Random rand = new Random(System.currentTimeMillis());
         int c = 0;
+        boolean switched = false;
         while(true) {
             c++;
+            if(c % switchEveryNTries == switchEveryNTries-1) {
+                if(switched) {
+                    proxyIdx -= 100;
+                } else {
+                    proxyIdx += 100;
+                }
+                switched = !switched;
+            }
             int i = rand.nextInt(bound)+1;
             while(i % numProxies!=proxyIdx) i++;
             for(int j = 0; j < sequential; j++) {
