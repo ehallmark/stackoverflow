@@ -16,6 +16,7 @@ public class ExtractToSQL {
 
     public static void main(String[] args) throws Exception {
         final Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost/stackoverflow?user=postgres&password=password&tcpKeepAlive=true");
+        conn.setAutoCommit(false);
         final int bound = 50000000;
         final File folder = new File("/home/ehallmark/data/stack_overflow/");
         final AtomicLong cnt = new AtomicLong(0);
@@ -33,8 +34,9 @@ public class ExtractToSQL {
                         // handle page
                         try {
                             handlePage(pageTitle, i, doc, conn);
-                            if (cnt.getAndIncrement() % 100 == 9999) {
+                            if (cnt.getAndIncrement() % 100 == 99) {
                                 System.out.println("Seen: " + cnt.get());
+                                conn.commit();
                             }
                         } catch(Exception e) {
                             e.printStackTrace();
@@ -43,97 +45,146 @@ public class ExtractToSQL {
                 }
             }
         }
+        conn.commit();
+        conn.close();
     }
 
     private static void handlePage(String pageTitle, int id, Document doc, Connection conn) throws SQLException {
-        System.out.println("Title "+id+": "+pageTitle);
         String questionName = doc.select("#question-header a.question-hyperlink").text().trim();
         String pageHref = doc.select("#question-header a.question-hyperlink").attr("href");
-        System.out.println("Question: "+questionName);
-        boolean closed = questionName.endsWith("[closed]");
-        Elements statusDiv = doc.select("#question .special-status .question-status");
-        if(statusDiv.size()>0) {
-            String status = statusDiv.select("h2 b").first().text().trim();
-            String reason = statusDiv.select("p").first().textNodes().get(0).text();
-            Elements statusUsers = statusDiv.select("a[href]");
-            System.out.println("Status: "+status);
-            System.out.println("Status reason: "+reason);
-            for(Element statusUser : statusUsers) {
-                String user = statusUser.text().trim();
-                System.out.println("Status user: "+user);
-            }
-        }
-        PreparedStatement questionPs = conn.prepareStatement("");
-        System.out.println("Is Closed: "+closed);
+        PreparedStatement questionPs = conn.prepareStatement("insert into questions values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) on conflict do nothing");
         {
             //PreparedStatement ps = conn.prepareStatement();
             Elements post = doc.select("#question .post-layout");
-            if(post.size()>0) {
-                handlePost(post.get(0), id, true, questionPs, conn);
+            if (post.size() > 0) {
+                // qinfo
+                Elements qInfo = doc.select("#qinfo");
+                int numViews = Integer.valueOf(qInfo.select("tr").get(1).select("td").get(1).text().split(" ")[0].replace(",", ""));
+                boolean closed = questionName.endsWith("[closed]");
+                questionPs.setInt(1, id);
+                int baseQuestionId = Integer.valueOf(pageHref.split("/")[2]);
+                questionPs.setInt(2, baseQuestionId);
+                questionPs.setString(3, pageTitle);
+                questionPs.setString(4, questionName);
+                questionPs.setString(5, pageHref);
+                questionPs.setBoolean(6, closed);
+                Elements statusDiv = doc.select("#question .special-status .question-status");
+                String status = null;
+                String reason = null;
+                if (statusDiv.size() > 0) {
+                    status = statusDiv.select("h2 b").first().text().trim();
+                    try {
+                        reason = statusDiv.select("p").first().textNodes().get(0).text();
+                    } catch(Exception e) {
+                        reason = null;
+                    }
+                    Elements statusUsers = statusDiv.select("a[href]");
+                    PreparedStatement ps = conn.prepareStatement("insert into status_users values (?,?) on conflict do nothing");
+                    for (Element statusUser : statusUsers) {
+                        String user = statusUser.text().trim();
+                        ps.setInt(1, id);
+                        ps.setString(2, user);
+                        ps.executeUpdate();
+                    }
+                    ps.close();
+                }
+                questionPs.setString(7, status);
+                questionPs.setString(8, reason);
+                questionPs.setInt(20, numViews);
+                handlePost(post.get(0), id, true, 8, questionPs, conn);
+                questionPs.executeUpdate();
+                questionPs.close();
             } else {
                 return;
             }
         }
         Elements answers = doc.select("#answers .answer");
-        PreparedStatement answerPs = conn.prepareStatement("insert into answers values (?,?,?,?,?,?) on conflict do nothing");
-        for(Element post : answers) {
-            handlePost(post, id, false, answerPs, conn);
+        if(answers.size()>0) {
+            PreparedStatement answerPs = conn.prepareStatement("insert into answers values (?,?,?,?,?,?,?,?,?,?,?,?,?,?) on conflict do nothing");
+            int idx = 0;
+            for (Element post : answers) {
+                int answerId = Integer.valueOf(post.attr("id").split("-")[1].trim());
+                answerPs.setInt(1, answerId);
+                answerPs.setInt(2, id);
+                answerPs.setInt(3, idx);
+                handlePost(post, id, false, 3, answerPs, conn);
+                answerPs.executeUpdate();
+                idx++;
+            }
+            answerPs.close();
         }
 
-        // qinfo
-        {
-            Elements qInfo = doc.select("#qinfo");
-            int numViews = Integer.valueOf(qInfo.select("tr").get(1).select("td").get(1).text().split(" ")[0].replace(",",""));
-            System.out.println("Num views: "+numViews);
-        }
         // links
         {
+            PreparedStatement ps = conn.prepareStatement("insert into question_links values (?,?) on conflict do nothing");
             Elements links = doc.select(".sidebar-linked .spacer").not(".more");
-            int numLinked = links.size();
             for(Element assoc : links) {
                 int assocId = Integer.valueOf(assoc.select("a.question-hyperlink").attr("href").split("/")[4]);
+                ps.setInt(1, id);
+                ps.setInt(2, assocId);
+                ps.executeUpdate();
             }
+            ps.close();
 
         }
         // related
         {
+            PreparedStatement ps = conn.prepareStatement("insert into question_related values (?,?) on conflict do nothing");
             Elements related = doc.select(".sidebar-related .spacer").not(".more");
-            int numRelated = related.size();
             for(Element assoc : related) {
                 int assocId = Integer.valueOf(assoc.select("a.question-hyperlink").attr("href").split("/")[4]);
-            //    System.out.println("Related id: "+assocId);
+                ps.setInt(1, id);
+                ps.setInt(2, assocId);
+                ps.executeUpdate();
             }
-          //  System.out.println("Num related: "+numRelated);
-
+            ps.close();
         }
     }
 
-    private static void handlePost(Element post, int questionId, boolean isQuestion, PreparedStatement ps, Connection conn) throws SQLException {
+    private static void handlePost(Element post, int questionId, boolean isQuestion, int psIdx, PreparedStatement ps, Connection conn) throws SQLException {
         // handle post
-        final String table;
+        final String commentTable;
         if(isQuestion) {
-            table = "questions";
+            commentTable = "question_comments";
         } else {
-            table = "answers";
+            commentTable = "answer_comments";
         }
         int voteCount = Integer.valueOf(post.select(".vote-count-post").text());
         String text = post.select(".post-text").text();
         String html = post.select(".post-text").html();
         boolean accepted = post.hasClass("accepted-answer");
-        LocalDate answerDate = LocalDate.parse(
-                post.select(".user-action-time .relativetime[title]").attr("title").split(" ")[0],
-                DateTimeFormatter.ISO_DATE);
-
         Elements userDetails = post.select(".user-details");
         boolean isCommunity = userDetails.select(".community-wiki").size()>0;
+        psIdx++;
+        ps.setInt(psIdx, voteCount);
+        psIdx++;
+        ps.setString(psIdx, text);
+        psIdx++;
+        ps.setString(psIdx, html);
+        psIdx++;
+        ps.setBoolean(psIdx, accepted);
+        psIdx++;
+        ps.setBoolean(psIdx, isCommunity);
+        psIdx++;
+        boolean foundAuthor = false;
+        boolean foundEditor = false;
         if(isCommunity) {
-            System.out.println("Community");
+
         } else {
             for (Element userDetail : userDetails) {
-                String user = userDetail.child(0).text();
+                String user = userDetail.child(0).text().trim();
+                String type = userDetail.siblingElements().first().textNodes().get(0).text().toLowerCase().trim();
                 String repStr = userDetail.select(".reputation-score").text().toLowerCase().trim();
                 boolean hasK = repStr.contains("k");
                 boolean hasM = repStr.contains("m");
+                LocalDate date;
+                try {
+                    date = LocalDate.parse(
+                            userDetail.parent().select(".user-action-time .relativetime[title]").attr("title").split(" ")[0],
+                            DateTimeFormatter.ISO_DATE);
+                } catch(Exception e) {
+                    date = null;
+                }
                 repStr = repStr.replace("k", "").replace("m", "").replace(",", "");
                 int userReputation;
                 try {
@@ -146,12 +197,44 @@ public class ExtractToSQL {
                         userReputation = 0;
                     }
                 }
+                if(type.equals("answered")||type.equals("asked")) {
+                    // author
+                    ps.setString(psIdx, user);
+                    ps.setInt(psIdx+1, userReputation);
+                    ps.setDate(psIdx+2, date==null ? null : Date.valueOf(date));
+                    foundAuthor = true;
+
+                } else {
+                    // edit
+                    ps.setString(psIdx+3, user);
+                    ps.setInt(psIdx+4, userReputation);
+                    ps.setDate(psIdx+5, date==null ? null : Date.valueOf(date));
+                    foundEditor = true;
+                }
             }
         }
-        ps.setInt(1, voteCount);
+        if(!foundAuthor) {
+            // get date
+            LocalDate date;
+            try {
+                date = LocalDate.parse(
+                        post.select(".user-action-time .relativetime[title]").last().attr("title").split(" ")[0],
+                        DateTimeFormatter.ISO_DATE);
+            } catch(Exception e) {
+                date = null;
+            }
+            ps.setObject(psIdx, null);
+            ps.setObject(psIdx+1, null);
+            ps.setDate(psIdx+2, Date.valueOf(date));
+        }
+        if(!foundEditor) {
+            ps.setObject(psIdx+3, null);
+            ps.setObject(psIdx+4, null);
+            ps.setObject(psIdx+5, null);
+        }
 
         // comments
-        PreparedStatement commentPs = conn.prepareStatement("insert into "+table+" values (?,?,?,?,?,?,?) on conflict do nothing");
+        PreparedStatement commentPs = conn.prepareStatement("insert into "+commentTable+" values (?,?,?,?,?,?,?) on conflict do nothing");
         Elements comments = post.select(".comments .comment");
         for(Element comment : comments) {
             int commentId = Integer.valueOf(comment.attr("id").split("-")[1].trim());
@@ -185,7 +268,9 @@ public class ExtractToSQL {
             commentPs.setDate(5, Date.valueOf(commentDate));
             commentPs.setString(6, user);
             commentPs.setObject(7, userReputation);
+            commentPs.executeUpdate();
         }
+        commentPs.close();
     }
 
 }
