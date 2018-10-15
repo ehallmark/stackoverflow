@@ -9,6 +9,11 @@ import java.io.File;
 import java.sql.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Set;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 public class ExtractToSQL {
 
     public static void main(String[] args) throws Exception {
@@ -16,7 +21,8 @@ public class ExtractToSQL {
         conn.setAutoCommit(false);
         final int bound = 50000000;
         final File folder = new File("/home/ehallmark/data/stack_overflow/");
-        for(int i = 642300; i < bound; i++) {
+
+        for(int i = 1; i < bound; i++) {
             File file = new File(folder, String.valueOf(i) + ".gzip");
             if(file.exists()) {
                 String payload;
@@ -36,7 +42,7 @@ public class ExtractToSQL {
                         // handle page
                         try {
                             handlePage(pageTitle, i, doc, conn);
-                            if (i % 100 == 99) {
+                            if (i % 1000 == 999) {
                                 System.out.println("Seen: " + i);
                                 conn.commit();
                             }
@@ -98,9 +104,11 @@ public class ExtractToSQL {
                 questionPs.setString(7, status);
                 questionPs.setString(8, reason);
                 questionPs.setInt(20, numViews);
-                handlePost(post.get(0), id, true, 8, questionPs, conn);
+                boolean proceed = handlePost(post.get(0), id, true, 8, questionPs, conn);
                 //System.out.println("PS: " + questionPs.toString());
-                questionPs.executeUpdate();
+                if(proceed) {
+                    questionPs.executeUpdate();
+                }
                 questionPs.close();
             } else {
                 return;
@@ -115,9 +123,12 @@ public class ExtractToSQL {
                 answerPs.setInt(1, answerId);
                 answerPs.setInt(2, id);
                 answerPs.setInt(3, idx);
-                handlePost(post, id, false, 3, answerPs, conn);
-                answerPs.executeUpdate();
-                idx++;
+                boolean proceed = handlePost(post, id, false, 3, answerPs, conn);
+                if(proceed) {
+                    answerPs.executeUpdate();
+                    idx++;
+                }
+                answerPs.clearParameters();
             }
             answerPs.close();
         }
@@ -133,6 +144,7 @@ public class ExtractToSQL {
                     ps.setInt(1, id);
                     ps.setInt(2, assocId);
                     ps.executeUpdate();
+                    ps.clearParameters();
                 } catch(Exception e) {
 
                 }
@@ -151,6 +163,7 @@ public class ExtractToSQL {
                     ps.setInt(1, id);
                     ps.setInt(2, assocId);
                     ps.executeUpdate();
+                    ps.clearParameters();
                 } catch(Exception e) {
 
                 }
@@ -159,7 +172,7 @@ public class ExtractToSQL {
         }
     }
 
-    private static void handlePost(Element post, int questionId, boolean isQuestion, int psIdx, PreparedStatement ps, Connection conn) throws SQLException {
+    private static boolean handlePost(Element post, int questionId, boolean isQuestion, int psIdx, PreparedStatement ps, Connection conn) throws SQLException {
         // handle post
         final String commentTable;
         if(isQuestion) {
@@ -201,7 +214,7 @@ public class ExtractToSQL {
                             userDetail.parent().select(".user-action-time .relativetime[title]").attr("title").split(" ")[0],
                             DateTimeFormatter.ISO_DATE);
                 } catch(Exception e) {
-                    date = null;
+                    return false;
                 }
                 repStr = repStr.replace("k", "").replace("m", "").replace(",", "");
                 int userReputation;
@@ -239,7 +252,7 @@ public class ExtractToSQL {
                         post.select(".user-action-time .relativetime[title]").last().attr("title").split(" ")[0],
                         DateTimeFormatter.ISO_DATE);
             } catch(Exception e) {
-                date = null;
+                return false;
             }
             ps.setObject(psIdx, null);
             ps.setObject(psIdx+1, null);
@@ -287,8 +300,10 @@ public class ExtractToSQL {
             commentPs.setString(6, user);
             commentPs.setObject(7, userReputation);
             commentPs.executeUpdate();
+            commentPs.clearParameters();
         }
         commentPs.close();
+        return true;
     }
 
 }

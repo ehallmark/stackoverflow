@@ -26,8 +26,15 @@ public class ManageScrapers {
         final int sequential = 1;
         List<Process> running = new ArrayList<>();
         int startProxy = 0;
-        int endProxy = 100;
-        ExecutorService service = Executors.newFixedThreadPool(endProxy-startProxy+1);
+        int minBound = 1;
+        File folder = new File("/home/ehallmark/data/stack_overflow/");
+        while(new File(folder, String.valueOf(minBound)+".gzip").exists()) {
+            minBound++;
+        }
+        final int _minBound = minBound - numProxies;
+        System.out.println("Min bound: "+minBound);
+        int endProxy = 200;
+        ExecutorService service = Executors.newFixedThreadPool((endProxy-startProxy)*sequential+1);
         try {
             for (int proxyIdx = startProxy; proxyIdx < endProxy; proxyIdx+=sequential) {
                 final int _proxyIdx = proxyIdx;
@@ -35,7 +42,7 @@ public class ManageScrapers {
                     @Override
                     public void run() {
                         try {
-                            String cmd = "java -cp target/classes:\"target/dependency/*\" -Xms250m -Xmx250m -Djdk.http.auth.tunneling.disabledSchemes=\"\" scrape.Scraper " + _proxyIdx + " " + sequential + " " + numProxies;
+                            String cmd = "java -cp target/classes:\"target/dependency/*\" -Xms150m -Xmx150m -Djdk.http.auth.tunneling.disabledSchemes=\"\" scrape.Scraper " + _proxyIdx + " " + sequential + " " + numProxies+ " "+_minBound;
                             ProcessBuilder builder = new ProcessBuilder("/bin/bash", "-c", cmd);
                             builder.redirectErrorStream(true);
                             Process p = builder.start();

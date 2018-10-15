@@ -114,7 +114,7 @@ public class TestProxyPass {
         Document doc = Jsoup.parse(text);
         String urlStr = doc.select("head meta[property=\"og:url\"]").attr("content");
         if(urlStr==null||urlStr.isEmpty()) {
-            return null;
+            return new Pair<>("", URLName);
         }
         System.out.println("Found URL with proxy: "+urlStr);
         return new Pair<>(text,urlStr);
