@@ -111,6 +111,7 @@ public class TestProxyPass {
         }
         di.close();
         String text = sb.toString();
+        if(text==null) text = "";
         Document doc = Jsoup.parse(text);
         String urlStr = doc.select("head meta[property=\"og:url\"]").attr("content");
         if(urlStr==null||urlStr.isEmpty()) {

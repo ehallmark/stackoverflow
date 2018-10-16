@@ -61,7 +61,7 @@ public class ManageScrapers {
                         }
                     }
                 });
-                TimeUnit.MILLISECONDS.sleep(10);
+                TimeUnit.MILLISECONDS.sleep(5);
             }
             service.shutdown();
             service.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);

@@ -55,7 +55,7 @@ public class Scraper {
     }
 
 
-    static void scrapeWithProxy(int proxyIdx, final int sequential, final int numProxies, int minBound) throws Exception {
+    static void scrapeWithProxy(final int proxyIdx, final int sequential, final int numProxies, int minBound) throws Exception {
         System.out.println("Starting proxy: "+proxyIdx);
         System.setProperty("webdriver.chrome.driver", "/usr/bin/chromedriver");
         System.setProperty("webdriver.firefox.driver", "/usr/bin/geckodriver");
@@ -73,10 +73,10 @@ public class Scraper {
 
         //final Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost/beerdb?user=postgres&password=password&tcpKeepAlive=true");
         //conn.setAutoCommit(false);
-        final int bound = 50000000;
+        final int bound = 52820947;
         boolean reseed = false;
         final boolean ingesting = false;
-        long timeSleep = 2000;
+        long timeSleep = 2100;
         File folder = new File("/home/ehallmark/data/stack_overflow/");
 
        // Set<Integer> existingFiles = Stream.of(folder.listFiles())
@@ -85,14 +85,16 @@ public class Scraper {
 
         System.out.println("Min bound: "+minBound);
         final Random rand = new Random(System.currentTimeMillis());
+        int c = 0;
         while(true) {
-            int i = minBound + rand.nextInt(bound-minBound)+1;
+            c += sequential;
+            int i = proxyIdx == 0 ? c : (minBound + rand.nextInt(bound-minBound)+1);
             //if(i % numProxies==proxyIdx) {
                 for (int j = 0; j < sequential; j++) {
                     final int idIndex = i + j;
                    // System.out.println("FOUND idIndex: "+idIndex);
                     final String url = urlPrefix + idIndex + "/";
-                    int pIdx = idIndex % numProxies;
+                    int pIdx = (proxyIdx+j) % numProxies;
                     final String proxyIp = proxyIps.get(pIdx);
                     File overviewFile = new File(folder, String.valueOf(idIndex) + ".gzip");
                     if (!ingesting && (!overviewFile.exists() || reseed)) {
@@ -125,8 +127,8 @@ public class Scraper {
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
+                        TimeUnit.MILLISECONDS.sleep(timeSleep);
                     }
-                    TimeUnit.MILLISECONDS.sleep(timeSleep);
                 }
             //}
         }
