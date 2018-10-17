@@ -120,6 +120,38 @@ create index votes_post_id_idx on votes (post_id);
 create index votes_user_id_idx on votes (user_id);
 
 
+-- aggregations
+drop table answers_with_question;
+create table answers_with_question (
+    id integer primary key,
+    parent_id integer not null, -- only for answers
+    score integer,
+    view_count integer,
+    body text,
+    owner_user_id integer,
+    last_activity_date timestamp,
+    closed_date timestamp,
+    title text,
+    tags text,
+    parent_score integer,
+    parent_view_count integer,
+    parent_body text,
+    parent_owner_user_id integer,
+    parent_last_activity_date timestamp,
+    parent_closed_date timestamp,
+    parent_title text,
+    parent_tags text
+);
+
+insert into answers_with_question (
+    select a.id, a.parent_id, a.score, a.view_count, a.body, a.owner_user_id, a.last_activity_date,
+    a.closed_date, a.title, a.tags,
+    q.score, q.view_count, q.body, q.owner_user_id, q.last_activity_date, q.closed_date, q.title, q.tags
+    from posts as q join posts as a on (q.id=a.parent_id)
+);
+
+
+
 -- convenience methods to dump and restore database (run from root directory of project)
 
 -- to dump
