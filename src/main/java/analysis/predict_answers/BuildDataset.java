@@ -31,8 +31,7 @@ public class BuildDataset {
         //      A random answer of a random question with probability 0.5
 
         // start by getting ids
-        final List<Integer> allQuestionIds = new ArrayList<>();
-        final List<Integer> allAnswerIds = new ArrayList<>();
+        final List<Integer> allAnswerIds = new ArrayList<>(100000);
         final Map<Integer,Integer> answerIdToQuestionIdMap = new HashMap<>();
         PreparedStatement ps = conn.prepareStatement("select id,parent_id,score from posts");
         ps.setFetchSize(1000);
@@ -40,10 +39,7 @@ public class BuildDataset {
         while(rs.next()) {
             int id = rs.getInt(1);
             Integer parentId = (Integer) rs.getObject(2);
-            if(parentId==null) {
-                // question
-                allQuestionIds.add(id);
-            } else {
+            if(parentId!=null) { // answer
                 allAnswerIds.add(id);
                 Integer score = (Integer)rs.getObject(3);
                 if(score==null||score>=0) {
