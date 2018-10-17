@@ -19,8 +19,8 @@ public class BuildDataset {
         final List<Integer> allQuestionIds = new ArrayList<>();
         final List<Integer> allAnswerIds = new ArrayList<>();
         final Map<Integer,Integer> answerIdToQuestionIdMap = new HashMap<>();
-        PreparedStatement ps = conn.prepareStatement("select id,parent_id,score from posts limit 10000000");
-        ps.setFetchSize(100);
+        PreparedStatement ps = conn.prepareStatement("select id,parent_id,score from posts");
+        ps.setFetchSize(1000);
         ResultSet rs = ps.executeQuery();
         while(rs.next()) {
             int id = rs.getInt(1);
@@ -31,7 +31,7 @@ public class BuildDataset {
             } else {
                 allAnswerIds.add(id);
                 Integer score = (Integer)rs.getObject(3);
-                if(score!=null&&score>0) {
+                if(score==null||score>=0) {
                     answerIdToQuestionIdMap.put(id, parentId);
                 }
             }
@@ -74,5 +74,8 @@ public class BuildDataset {
 
         System.out.println("Features size: "+features.size());
         System.out.println("Labels size: "+labels.size());
+
+
+        conn.close();
     }
 }
