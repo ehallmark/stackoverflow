@@ -148,7 +148,7 @@ public class ExtractXMLToSQL {
                 return new Object[]{
                         integerOr(attributes.attr(attrsXML.get(0)), null),
                         integerOr(attributes.attr(attrsXML.get(1)), null),
-                        integerOr(attributes.attr(attrsXML.get(2)), null),
+                        dateOr(attributes.attr(attrsXML.get(2)), null),
                         attributes.attr(attrsXML.get(3)),
                         attributes.attr(attrsXML.get(4)),
                         dateOr(attributes.attr(attrsXML.get(5)), null),
