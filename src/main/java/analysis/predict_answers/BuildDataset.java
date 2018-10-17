@@ -62,12 +62,30 @@ public class BuildDataset {
 
         final List<Object> features = new ArrayList<>();
         final List<Object> labels = new ArrayList<>();
+        final Map<Integer, Object[]> answerData = new HashMap<>();
+        PreparedStatement ps2 = conn.prepareStatement("select id, body, tags, title from posts where parent_id is not null");
+        ps2.setFetchSize(1000);
+        ResultSet rs2 = ps2.executeQuery();
+        {
+            int count = 0;
+            while (rs2.next()) {
+                int id = rs2.getInt(1);
+                Object[] answerFeatures = getFeaturesFor(rs2, 1);
+                answerData.put(id, answerFeatures);
+                if(count%1000==999) {
+                    System.out.println("Seen answers: " + count);
+                }
+                count++;
+            }
+            rs2.close();
+            ps2.close();
+        }
 
         // build dataset
         ps = conn.prepareStatement("select id, body, tags, title from posts where parent_id is null");
+
         ps.setFetchSize(50);
         rs = ps.executeQuery();
-        PreparedStatement ps2 = conn.prepareStatement("select body, tags, title from posts where id = ?");
         int count = 0;
         while(rs.next()) {
             int questionId = rs.getInt(1);
@@ -77,36 +95,22 @@ public class BuildDataset {
             final Object[] questionFeatures = getFeaturesFor(rs, 1);
             for (int i = 0; i < answerIds.size(); i++) {
                 // add answer
-                boolean found = false;
                 {
                     int answerId = answerIds.get(i);
-                    ps2.setInt(1, answerId);
-                    ResultSet rs2 = ps2.executeQuery();
-                    if(rs2.next()) {
-                        found = true;
-                        Object[] answerFeatures = getFeaturesFor(rs2, 0);
-                        features.add(new Object[]{questionFeatures, answerFeatures});
-                        labels.add(1);
-                    }
-                    rs2.close();
-
+                    features.add(new Object[]{questionFeatures, answerData.get(answerId)});
+                    labels.add(1);
                 }
 
                 // add random (if found data for non-random)
-                if(found) {
+                {
                     int randomAnswerId = allAnswerIds.get(random.nextInt(allAnswerIds.size()));
-                    ps2.setInt(1, randomAnswerId);
-                    ResultSet rs2 = ps2.executeQuery();
-                    if(rs2.next()) {
-                        Object[] answerFeatures = getFeaturesFor(rs2, 0);
-                        features.add(new Object[]{questionFeatures, answerFeatures});
-                        labels.add(0);
-                    }
-                    rs2.close();
+                    features.add(new Object[]{questionFeatures, answerData.get(randomAnswerId)});
+                    labels.add(0);
                 }
                 if(count % 1000 == 999) {
                     System.out.println("Seen: "+count);
                 }
+                count++;
             }
 
         }
