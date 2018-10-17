@@ -230,6 +230,13 @@ public class ExtractXMLToSQL {
         }
 
         conn.commit();
+        for(PreparedStatement ps : statements) {
+            try {
+                ps.close();
+            } catch(Exception e) {
+                e.printStackTrace();
+            }
+        }
         conn.close();
     }
 
@@ -248,9 +255,10 @@ public class ExtractXMLToSQL {
             return defaultVal;
         }
     }
-
+    private static List<PreparedStatement> statements = new ArrayList<>();
     private static Consumer<String> createLineConsumer(Connection conn, List<String> attrs, List<String> primaryKeys, String tableName, Function<String, Object[]> dataFunction) throws SQLException {
         PreparedStatement ps = createStatement(conn, attrs, primaryKeys, tableName);
+        statements.add(ps);
         AtomicLong counter = new AtomicLong(0);
         AtomicLong valid = new AtomicLong(0);
         return line -> {

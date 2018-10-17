@@ -96,3 +96,25 @@ create table votes (
     user_id integer,
     bounty_amount integer
 );
+
+
+-- add indices
+create index badges_user_id_idx on badges (user_id);
+
+create index comments_post_id_idx on comments (post_id);
+create index comments_user_id_idx on comments (user_id);
+
+create index posts_parent_id_idx on posts (parent_id);
+create index posts_accepted_answer_id_idx on posts (accepted_answer_id);
+create index posts_owner_user_id_idx on posts (owner_user_id);
+
+create index post_history_post_id_idx on post_history (post_id);
+create index post_history_post_history_type_id_idx on post_history (post_history_type_id);
+create index post_history_revision_guid_idx on post_history (revision_guid);
+create index post_history_user_id_idx on post_history (user_id);
+
+create index post_links_post_id_idx on post_links (post_id);
+create index post_links_related_post_id_idex on post_links (related_post_id);
+
+create index votes_post_id_idx on votes (post_id);
+create index votes_user_id_idx on votes (user_id);
