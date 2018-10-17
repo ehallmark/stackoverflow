@@ -1,13 +1,28 @@
 package analysis.predict_answers;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
+import org.eclipse.jetty.util.ArrayUtil;
+
+import java.sql.*;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class BuildDataset {
+
+    private static Object[] getFeaturesFor(ResultSet rs, int startIdx) throws SQLException {
+        String body = rs.getString(startIdx+1);
+        String tagsStr = rs.getString(startIdx+2);
+        String[] tags = tagsStr==null||tagsStr==null?new String[]{} : Stream.of(tagsStr.split("><"))
+                .map(str->str.replace("<","").replace(">","")).toArray(size->new String[size]);
+        tags = ArrayUtil.removeFromArray(tags, "");
+        String title = rs.getString(startIdx+3);
+        return new Object[]{
+                body,
+                tags,
+                title
+        };
+    }
+
     public static void main(String[] args) throws Exception {
         final Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost/stackoverflow?user=postgres&password=password&tcpKeepAlive=true");
         conn.setAutoCommit(false);
@@ -49,29 +64,55 @@ public class BuildDataset {
         final List<Object> labels = new ArrayList<>();
 
         // build dataset
-        questionIdToAnswerIdsMap.forEach((questionId, answerIds)->{
-            Object questionFeatures = null;
-            for(int i = 0; i < answerIds.size(); i++) {
+        ps = conn.prepareStatement("select id, body, tags, title from posts where parent_id is null");
+        ps.setFetchSize(50);
+        rs = ps.executeQuery();
+        PreparedStatement ps2 = conn.prepareStatement("select body, tags, title from posts where id = ?");
+        int count = 0;
+        while(rs.next()) {
+            int questionId = rs.getInt(1);
+            List<Integer> answerIds = questionIdToAnswerIdsMap.get(questionId);
+            if(answerIds==null) continue;
+
+            final Object[] questionFeatures = getFeaturesFor(rs, 1);
+            for (int i = 0; i < answerIds.size(); i++) {
                 // add answer
+                boolean found = false;
                 {
                     int answerId = answerIds.get(i);
-                    // TODO get features
-                    Object answerFeatures = null;
-                    features.add(new Object[]{questionFeatures, answerFeatures});
-                    labels.add(1);
+                    ps2.setInt(1, answerId);
+                    ResultSet rs2 = ps2.executeQuery();
+                    if(rs2.next()) {
+                        found = true;
+                        Object[] answerFeatures = getFeaturesFor(rs2, 0);
+                        features.add(new Object[]{questionFeatures, answerFeatures});
+                        labels.add(1);
+                    }
+                    rs2.close();
+
                 }
 
-                // add random
-                {
+                // add random (if found data for non-random)
+                if(found) {
                     int randomAnswerId = allAnswerIds.get(random.nextInt(allAnswerIds.size()));
-                    // TODO get features
-                    Object answerFeatures = null;
-                    features.add(new Object[]{questionFeatures, answerFeatures});
-                    labels.add(0);
+                    ps2.setInt(1, randomAnswerId);
+                    ResultSet rs2 = ps2.executeQuery();
+                    if(rs2.next()) {
+                        Object[] answerFeatures = getFeaturesFor(rs2, 0);
+                        features.add(new Object[]{questionFeatures, answerFeatures});
+                        labels.add(0);
+                    }
+                    rs2.close();
+                }
+                if(count % 1000 == 999) {
+                    System.out.println("Seen: "+count);
                 }
             }
-        });
 
+        }
+        ps2.close();
+        rs.close();
+        ps.close();
         System.out.println("Features size: "+features.size());
         System.out.println("Labels size: "+labels.size());
 
