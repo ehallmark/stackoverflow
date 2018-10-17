@@ -49,7 +49,7 @@ create table post_history (
     id integer primary key,
     post_history_type_id integer,
     post_id integer,
-    revision_guid integer,
+    revision_guid text,
     creation_date timestamp,
     user_id integer,
     user_display_name text,
@@ -65,7 +65,7 @@ create table post_links (
     creation_date timestamp,
     post_id integer,
     related_post_id integer,
-    post_link_type_id integer
+    link_type_id integer
 );
 
 

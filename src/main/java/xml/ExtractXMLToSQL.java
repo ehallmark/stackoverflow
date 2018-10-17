@@ -31,7 +31,7 @@ public class ExtractXMLToSQL {
         boolean postLinks = false;
         boolean users = false;
         boolean votes = false;
-        boolean postHistory = true;
+        boolean postHistory = false;
 
         // badges
         if (badges) {
@@ -95,7 +95,7 @@ public class ExtractXMLToSQL {
                         integerOr(attributes.attr(attrsXML.get(0)), null),
                         integerOr(attributes.attr(attrsXML.get(1)), null),
                         integerOr(attributes.attr(attrsXML.get(2)), null),
-                        integerOr(attributes.attr(attrsXML.get(3)), null),
+                        attributes.attr(attrsXML.get(3)),
                         dateOr(attributes.attr(attrsXML.get(4)), null),
                         integerOr(attributes.attr(attrsXML.get(5)), null),
                         attributes.attr(attrsXML.get(6)),
@@ -113,7 +113,7 @@ public class ExtractXMLToSQL {
         // Post Links
         if (postLinks) {
             String filePath = "/media/ehallmark/tank/stackoverflow_data/PostLinks.xml";
-            List<String> attrs = Arrays.asList("id", "creation_date", "post_id", "related_post_id", "post_link_type_id");
+            List<String> attrs = Arrays.asList("id", "creation_date", "post_id", "related_post_id", "link_type_id");
             List<String> attrsXML = attrs.stream().map(attr->attr.replace("_","")).collect(Collectors.toList());
 
             Function<String, Object[]> dataFunction = line -> {
