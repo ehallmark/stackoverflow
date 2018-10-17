@@ -118,3 +118,13 @@ create index post_links_related_post_id_idex on post_links (related_post_id);
 
 create index votes_post_id_idx on votes (post_id);
 create index votes_user_id_idx on votes (user_id);
+
+
+-- convenience methods to dump and restore database (run from root directory of project)
+
+-- to dump
+pg_dump -Fc --dbname=postgresql://postgres:password@127.0.0.1:5432/stackoverflow > stackoverflow.dump
+
+-- to restore
+pg_restore -Fc --dbname=postgresql://postgres:password@127.0.0.1:5432/stackoverflow stackoverflow.dump
+
