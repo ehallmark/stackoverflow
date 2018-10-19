@@ -43,13 +43,19 @@ public class PostsPreprocessor {
         return sj.toString();
     }
 
-
     public String preprocessBody(String in, Map<String,Integer> vocabIndexMap, int limit) {
+        return preprocessBody(in, vocabIndexMap, limit, "[^a-z0-9 ]");
+    }
+
+    public String preprocessBody(String in, Map<String,Integer> vocabIndexMap, int limit, String replace) {
         Document body = Jsoup.parse(in);
         Elements code = body.select("code");
         code.remove();
-        in = body.text();
-        String[] words = in.toLowerCase().replaceAll("[^a-z0-9 ]", " ").split("\\s+");
+        in = body.text().toLowerCase();
+        if(replace!=null) {
+            in = in.replaceAll(replace, " ");
+        }
+        String[] words = in.split("\\s+");
         if(vocabIndexMap==null) {
             return String.join(" ", words);
         } else {
@@ -65,6 +71,13 @@ public class PostsPreprocessor {
             }
             return sj.toString();
         }
+    }
+
+
+    public String getCode(String in) {
+        Document body = Jsoup.parse(in);
+        Elements code = body.select("code");
+        return code.text();
     }
 
 }
