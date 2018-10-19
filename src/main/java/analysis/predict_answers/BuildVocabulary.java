@@ -1,5 +1,6 @@
 package analysis.predict_answers;
 
+import analysis.preprocessing.PostsPreprocessor;
 import com.opencsv.CSVWriter;
 import csv.CSVHelper;
 
@@ -19,16 +20,17 @@ public class BuildVocabulary {
         final Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost/stackoverflow?user=postgres&password=password&tcpKeepAlive=true");
         conn.setAutoCommit(false);
 
-        int minVocabularySize = 10;
+        int minVocabularySize = 5;
 
-        PreparedStatement ps = conn.prepareStatement("select body from posts tablesample system (10)");
+        PreparedStatement ps = conn.prepareStatement("select body from posts tablesample system (20)");
         ps.setFetchSize(10);
         ResultSet rs = ps.executeQuery();
         int count = 0;
         Map<String,Integer> wordCountMap = new HashMap<>();
+        final PostsPreprocessor preprocessor = new PostsPreprocessor();
         while(rs.next()) {
             String text = rs.getString(1);
-            String[] words = text.toLowerCase().replaceAll("[^a-z0-9 ]", " ").split("\\s+");
+            String[] words = preprocessor.preprocessBody(text, null, -1).split("\\s+");
             for(String word : words) {
                 wordCountMap.putIfAbsent(word, 0);
                 wordCountMap.put(word, wordCountMap.get(word)+1);

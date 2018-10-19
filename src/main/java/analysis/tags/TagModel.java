@@ -46,11 +46,26 @@ public class TagModel {
                 .filter(e->e.getValue()>=minTagCount)
                 .collect(Collectors.toMap(e->e.getKey(),e->e.getValue()));
 
+
+        List<String> tags1000 = tagToCountMap.entrySet().stream()
+                .sorted((e1,e2)->Integer.compare(e2.getValue(),e1.getValue()))
+                .limit(1000)
+                .map(e->e.getKey())
+                .collect(Collectors.toList());
+
+        List<String> tags5000 = tagToCountMap.entrySet().stream()
+                .sorted((e1,e2)->Integer.compare(e2.getValue(),e1.getValue()))
+                .limit(5000)
+                .map(e->e.getKey())
+                .collect(Collectors.toList());
+
         List<String> tags = new ArrayList<>(tagToCountMap.keySet());
         Collections.sort(tags);
 
         System.out.println("Num distinct tags: "+tagToCountMap.size());
 
+        CSVHelper.writeToCSV("tags1000.csv", tags1000.stream().map(e->new String[]{e}).collect(Collectors.toList()));
+        CSVHelper.writeToCSV("tags5000.csv", tags5000.stream().map(e->new String[]{e}).collect(Collectors.toList()));
         CSVHelper.writeToCSV("tags.csv", tags.stream().map(e->new String[]{e}).collect(Collectors.toList()));
         CSVHelper.writeToCSV("tags_count_map.csv", tagToCountMap.entrySet().stream().map(e->new String[]{e.getKey(), e.getValue().toString()}).collect(Collectors.toList()));
     }

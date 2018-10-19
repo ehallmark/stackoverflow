@@ -1,5 +1,6 @@
 package analysis.predict_answers;
 
+import analysis.preprocessing.PostsPreprocessor;
 import com.opencsv.CSVWriter;
 import csv.CSVHelper;
 import javafx.util.Pair;
@@ -17,37 +18,12 @@ import java.util.stream.Stream;
 public class BuildDataset {
     public static final String DATA_FILE = "/media/ehallmark/tank/stack_answer_prediction_data.csv";
 
-    private static Object[] getFeaturesFor(ResultSet rs, int startIdx, Map<String,Integer> wordIdxMap) throws SQLException {
-        String body = preprocess(rs.getString(startIdx+1),wordIdxMap, 256);
-        String tags = rs.getString(startIdx+2);
-        String title = preprocess(rs.getString(startIdx+3),wordIdxMap, 32);
-        return new Object[]{
-                body,
-                tags,
-                title
-        };
-    }
-
-    private static String preprocess(String in, Map<String,Integer> vocabIndexMap, int limit) {
-        String[] words = in.toLowerCase().replaceAll("[^a-z0-9 ]", " ").split("\\s+");
-        StringJoiner sj = new StringJoiner(",");
-        int i = 0;
-        for(String word : words) {
-            Integer idx = vocabIndexMap.get(word);
-            if(idx!=null) {
-                sj.add(idx.toString());
-                i++;
-                if(i>=limit) break;
-            }
-        }
-        return sj.toString();
-    }
-
     public static void main(String[] args) throws Exception {
-        boolean test = true;
+        boolean test = false;
         List<String> vocabulary = CSVHelper.readFromCSV("answers_vocabulary.csv").stream().map(s->s[0]).collect(Collectors.toList());
         Map<String,Integer> vocabIndexMap = IntStream.range(0, vocabulary.size()).mapToObj(i->new Pair<>(vocabulary.get(i), i))
                 .collect(Collectors.toMap(e->e.getKey(), e->e.getValue()));
+        final Set<String> tags = CSVHelper.readFromCSV("tags5000.csv").stream().map(s->s[0]).collect(Collectors.toSet());
 
         final Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost/stackoverflow?user=postgres&password=password&tcpKeepAlive=true");
         final Connection conn2 = DriverManager.getConnection("jdbc:postgresql://localhost/stackoverflow?user=postgres&password=password&tcpKeepAlive=true");
@@ -68,11 +44,13 @@ public class BuildDataset {
         ResultSet rs2 = ps2.executeQuery();
         int count = 0;
         System.out.println("Iterating...");
+        final PostsPreprocessor postsPreprocessor = new PostsPreprocessor();
+
         while(rs.next() && rs2.next()) {
-            final Object[] questionFeatures = getFeaturesFor(rs, 0, vocabIndexMap);
-            final Object[] actualAnswerFeatures = getFeaturesFor(rs, 3, vocabIndexMap);
-            final Object[] randomQuestionFeatures = getFeaturesFor(rs2, 0, vocabIndexMap);
-            final Object[] randomAnswerFeatures = getFeaturesFor(rs2, 3, vocabIndexMap);
+            final Object[] questionFeatures = postsPreprocessor.getFeaturesFor(rs, 0, vocabIndexMap, tags);
+            final Object[] actualAnswerFeatures = postsPreprocessor.getFeaturesFor(rs, 3, vocabIndexMap, tags);
+            final Object[] randomQuestionFeatures = postsPreprocessor.getFeaturesFor(rs2, 0, vocabIndexMap, tags);
+            final Object[] randomAnswerFeatures = postsPreprocessor.getFeaturesFor(rs2, 3, vocabIndexMap, tags);
 
             final String[] featuresPos = new String[]{
                     questionFeatures[0].toString(),
