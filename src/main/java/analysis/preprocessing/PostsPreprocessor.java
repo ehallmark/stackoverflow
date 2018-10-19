@@ -2,13 +2,13 @@ package analysis.preprocessing;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Map;
-import java.util.Set;
-import java.util.StringJoiner;
+import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class PostsPreprocessor {
@@ -47,6 +47,23 @@ public class PostsPreprocessor {
         return preprocessBody(in, vocabIndexMap, limit, "[^a-z0-9 ]");
     }
 
+    public List<String> textParts(String in) {
+        Document body = Jsoup.parse(in.toLowerCase());
+        List<Element> children = body.children();
+        final List<String> parts = new ArrayList<>();
+        for(Element child : children) {
+            textPartHelper(parts, child);
+        }
+        return parts;
+    }
+
+    private void textPartHelper(List<String> parts, Element element) {
+        parts.add(element.text());
+        for(Element child : element.children()) {
+            textPartHelper(parts, child);
+        }
+    }
+
     public String preprocessBody(String in, Map<String,Integer> vocabIndexMap, int limit, String replace) {
         Document body = Jsoup.parse(in);
         Elements code = body.select("code");
@@ -55,10 +72,10 @@ public class PostsPreprocessor {
         if(replace!=null) {
             in = in.replaceAll(replace, " ");
         }
-        String[] words = in.split("\\s+");
         if(vocabIndexMap==null) {
-            return String.join(" ", words);
+            return in;
         } else {
+            String[] words = in.split("\\s+");
             StringJoiner sj = new StringJoiner(",");
             int i = 0;
             for (String word : words) {
