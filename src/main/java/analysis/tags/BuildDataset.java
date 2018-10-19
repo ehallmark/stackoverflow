@@ -18,13 +18,13 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public class BuildDataset {
-    public static final String DATA_FILE = "/media/ehallmark/tank/stack_tag_prediction_data.csv";
+    public static final String DATA_FILE = "/media/ehallmark/tank/stack_tag_prediction_data-5000.csv";
 
 
     public static void main(String[] args) throws Exception {
         boolean test = false;
         List<String> vocabulary = CSVHelper.readFromCSV("answers_vocabulary.csv").stream().map(s->s[0]).collect(Collectors.toList());
-        Set<String> tags = CSVHelper.readFromCSV("tags1000.csv").stream().map(s->s[0]).collect(Collectors.toSet());
+        Set<String> tags = CSVHelper.readFromCSV("tags5000.csv").stream().map(s->s[0]).collect(Collectors.toSet());
         Map<String,Integer> vocabIndexMap = IntStream.range(0, vocabulary.size()).mapToObj(i->new Pair<>(vocabulary.get(i), i))
                 .collect(Collectors.toMap(e->e.getKey(), e->e.getValue()));
 
