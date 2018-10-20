@@ -28,6 +28,51 @@ public class PostsPreprocessor {
         };
     }
 
+    public Object[] getCodeFeaturesFor(ResultSet rs, int startIdx, Map<String,Integer> wordIdxMap, Set<String> availableTags) throws SQLException {
+        String code = preprocess(getCode(rs.getString(startIdx+1)), wordIdxMap, 1024);
+
+        if(code.trim().isEmpty()) return null;
+        String tagStr = rs.getString(startIdx+2);
+        String[] tags = Stream.of(tagStr.split("><"))
+                .map(s->s.replace("<","").replace(">",""))
+                .filter(s->s.length()>0 && availableTags.contains(s))
+                .toArray(s->new String[s]);
+
+        double[] charFrequency = computeCharFrequency(code);
+        return new Object[]{
+                code,
+                charFrequency,
+                ("<"+String.join("><", tags)+">").replace("<>","")
+        };
+    }
+
+    private static final char[] SPECIAL_CHARS = new char[]{'_', '-', '\t', '\n', ' ', '%', '&', '*', '\'', '^', '!', '(', ')', '{', '}', '>', '<', '[', ']', '/', '\\', '=', '?', ':', '$', '#', '@', '~', '+', ',', '.', '|', '`'};
+    private static final Map<Character, Integer> charToIndexMap;
+    static {
+        charToIndexMap = new HashMap<>();
+        for(int i = 0; i < SPECIAL_CHARS.length; i++) {
+            char ch = SPECIAL_CHARS[i];
+            charToIndexMap.put(ch, i);
+        }
+    }
+    public static double[] computeCharFrequency(String in) {
+        double[] freqs = new double[SPECIAL_CHARS.length];
+        char[] chars = in.toCharArray();
+        int cnt = 0;
+        for(int i = 0; i < chars.length; i++) {
+            Integer idx = charToIndexMap.get(chars[i]);
+            if(idx!=null) {
+                freqs[idx] += 1;
+                cnt++;
+            }
+        }
+        if(cnt > 0) {
+            for(int i = 0; i < freqs.length; i++) {
+                freqs[i]/=cnt;
+            }
+        }
+        return freqs;
+    }
     public String preprocess(String in, Map<String,Integer> vocabIndexMap, int limit) {
         String[] words = in.toLowerCase().replaceAll("[^a-z0-9 ]", " ").split("\\s+");
         StringJoiner sj = new StringJoiner(",");

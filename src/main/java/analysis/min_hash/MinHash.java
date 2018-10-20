@@ -108,7 +108,7 @@ public class MinHash implements Serializable {
 
         return possibilities.stream().map(p->{
             return new Pair<>(p.getKey(), similarity(code, p.getValue()));
-        }).sorted((p1,p2)->Double.compare(p2.getValue(), p1.getValue())).limit(limit)
+        }).filter(p->p.getValue()>0).sorted((p1,p2)->Double.compare(p2.getValue(), p1.getValue())).limit(limit)
                 .collect(Collectors.toList());
     }
 
