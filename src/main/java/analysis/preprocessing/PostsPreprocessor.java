@@ -1,10 +1,12 @@
 package analysis.preprocessing;
 
+import com.opencsv.CSVWriter;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import java.io.FileWriter;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
@@ -38,7 +40,7 @@ public class PostsPreprocessor {
                 .filter(s->s.length()>0 && availableTags.contains(s))
                 .toArray(s->new String[s]);
 
-        double[] charFrequency = computeCharFrequency(code);
+        double[] charFrequency = computeCharFrequency(code, charToIndexMap);
         return new Object[]{
                 code,
                 charFrequency,
@@ -46,7 +48,23 @@ public class PostsPreprocessor {
         };
     }
 
-    private static final char[] SPECIAL_CHARS = new char[]{'_', '-', '\t', '\n', ' ', '%', '&', '*', '\'', '^', '!', '(', ')', '{', '}', '>', '<', '[', ']', '/', '\\', '=', '?', ':', '$', '#', '@', '~', '+', ',', '.', '|', '`'};
+    private static final char[] ALL_CHARS = new char[]{
+            'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z',
+            'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z',
+            '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', ' ', '\'', '"', '\\', '`', '~', '!', '@', '#', '$', '%',
+            '^', '&', '*', '(', ')', '_', '+', '-', '=', '<', '>', '?', ',', '.', '/', '\n', '\t', ':', ';', '[', ']',
+            '{', '}', '|'
+    };
+    private static final Map<Character, Integer> allCharsToIndexMap;
+    static {
+        allCharsToIndexMap = new HashMap<>();
+        for(int i = 0; i < ALL_CHARS.length; i++) {
+            char ch = ALL_CHARS[i];
+            allCharsToIndexMap.put(ch, i);
+        }
+    }
+
+    private static final char[] SPECIAL_CHARS = new char[]{' ', '\'', '"', '\\', '`', '~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '-', '=', '<', '>', '?', ',', '.', '/', '\n', '\t', ':', ';', '[', ']', '{', '}', '|'};
     private static final Map<Character, Integer> charToIndexMap;
     static {
         charToIndexMap = new HashMap<>();
@@ -55,12 +73,47 @@ public class PostsPreprocessor {
             charToIndexMap.put(ch, i);
         }
     }
-    public static double[] computeCharFrequency(String in) {
-        double[] freqs = new double[SPECIAL_CHARS.length];
+
+    public static void main(String[] args) throws Exception {
+        {
+            CSVWriter writer = new CSVWriter(new FileWriter("/home/ehallmark/repos/stackoverflow/special_chars.csv"));
+            for (char ch : SPECIAL_CHARS) {
+                writer.writeNext(new String[]{String.valueOf(ch)});
+            }
+            writer.close();
+        }
+        {
+            CSVWriter writer = new CSVWriter(new FileWriter("/home/ehallmark/repos/stackoverflow/all_chars.csv"));
+            for (char ch : ALL_CHARS) {
+                writer.writeNext(new String[]{String.valueOf(ch)});
+            }
+            writer.close();
+        }
+        System.out.println("All chars: "+allCharsToIndexMap.size());
+        System.out.println("Special chars: "+charToIndexMap.size());
+    }
+    public Object[] getCodeCharFeaturesFor(String code, String tagStr, Set<String> availableTags) throws SQLException {
+        if(code.trim().isEmpty()) return null;
+        String[] tags = Stream.of(tagStr.split("><"))
+                .map(s->s.replace("<","").replace(">",""))
+                .filter(s->s.length()>0 && availableTags.contains(s))
+                .toArray(s->new String[s]);
+
+        int[] chars = computeCharTimeSeries(code, allCharsToIndexMap, 2048);
+        return new Object[]{
+                chars,
+                ("<"+String.join("><", tags)+">").replace("<>","")
+        };
+    }
+
+
+
+    public static double[] computeCharFrequency(String in, Map<Character, Integer> map) {
+        double[] freqs = new double[map.size()];
         char[] chars = in.toCharArray();
         int cnt = 0;
         for(int i = 0; i < chars.length; i++) {
-            Integer idx = charToIndexMap.get(chars[i]);
+            Integer idx = map.get(chars[i]);
             if(idx!=null) {
                 freqs[idx] += 1;
                 cnt++;
@@ -73,6 +126,19 @@ public class PostsPreprocessor {
         }
         return freqs;
     }
+
+    public static int[] computeCharTimeSeries(String in, Map<Character, Integer> map, int t) {
+        int[] indices = new int[t];
+        char[] chars = in.toCharArray();
+        for(int i = 0; i < Math.min(t, chars.length); i++) {
+            Integer idx = map.get(chars[i]);
+            if(idx!=null) {
+                indices[i]  = idx;
+            }
+        }
+        return indices;
+    }
+
     public String preprocess(String in, Map<String,Integer> vocabIndexMap, int limit) {
         String[] words = in.toLowerCase().replaceAll("[^a-z0-9 ]", " ").split("\\s+");
         StringJoiner sj = new StringJoiner(",");
