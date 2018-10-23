@@ -18,6 +18,7 @@ public class MinHash implements Serializable {
     private final int[] shingleSizes;
     private transient Hash[] hashes;
     private List<Pair<String, int[]>> possibilities;
+    private AtomicInteger cnt = new AtomicInteger(0);
     public MinHash(final int k, final int... shingleSizes) {
         this.k=k;
         this.shingleSizes=shingleSizes;
@@ -46,14 +47,14 @@ public class MinHash implements Serializable {
         return minHash;
     }
 
-    public void initialize(List<Pair<String,String>> data) {
-        AtomicInteger cnt = new AtomicInteger(0);
-        this.possibilities = data.stream().map(e->{
-            if(cnt.getAndIncrement()%1000==999) {
-                System.out.println("Initialized min hash: "+cnt.get());
-            }
-            return new Pair<>(e.getKey(), createHashValues(e.getValue()));
-        }).collect(Collectors.toList());
+    public void initialize(Pair<String,String> data) {
+        if(this.possibilities==null) {
+            this.possibilities = new LinkedList<>();
+        }
+        possibilities.add(new Pair<>(data.getKey(), createHashValues(data.getValue())));
+        if(cnt.getAndIncrement()%1000==999) {
+            System.out.println("Initialized min hash: "+cnt.get());
+        }
     }
 
     private int[] createHashValues(String str) {
@@ -94,8 +95,19 @@ public class MinHash implements Serializable {
 
     private Set<String> createShingles(String str, int shingleSize) {
         Set<String> shingles = new HashSet<>();
-        for(int i = 0; i < str.length()-shingleSize; i++) {
-            shingles.add(str.substring(i, i + shingleSize));
+        if(shingleSize > 0) {
+            for (int i = 0; i < str.length() - shingleSize; i++) {
+                String sub = str.substring(i, i + shingleSize);
+                if (sub.contains("\n")) continue;
+                shingles.add(sub);
+            }
+        } else {
+            // ngram
+            for(String sub : str.split("\\s+")) {
+                if(sub.length()>0) {
+                    shingles.add(sub);
+                }
+            }
         }
         return shingles;
     }

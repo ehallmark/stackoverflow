@@ -151,6 +151,22 @@ insert into answers_with_question (
 );
 
 
+drop table tags;
+create table tags (
+    name text primary key,
+    occurrences integer not null
+);
+
+insert into tags (
+    select tag, count(*) from (
+        select trim(replace(replace(tag, '>', ''), '<', '')) as tag from posts,
+         unnest(string_to_array(tags, '><')) as t(tag)
+
+    ) as tmp
+    group by tag
+);
+
+
 
 -- convenience methods to dump and restore database (run from root directory of project)
 
