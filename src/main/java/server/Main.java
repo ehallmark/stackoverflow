@@ -125,7 +125,7 @@ public class Main {
                                 div().withClass("col-12").with(
                                         h5("Relevant Tags"),
                                         div().with(
-                                            topTags.stream().map(tag->span(tag+" ("+String.format("%.2f",tag.getValue())+")"))
+                                            topTags.stream().map(tag->span(tag.getKey()+" ("+String.format("%.2f",tag.getValue())+")"))
                                             .collect(Collectors.toList())
                                         )
                                 )

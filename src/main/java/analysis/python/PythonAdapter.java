@@ -18,9 +18,9 @@ public class PythonAdapter {
     public static String get(String urlStr, String inputs, int n) throws IOException {
         if(inputs==null || inputs.isEmpty()) return null;
         URL url = new URL(urlStr + "?n="+n+"&text="+URLEncoder.encode(inputs, "UTF-8"));
-
+        System.out.println("URL: "+url);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setRequestMethod("GET");
+        conn.setRequestMethod("POST");
 
         Reader in = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));
 
@@ -33,7 +33,7 @@ public class PythonAdapter {
     }
 
     public static List<Pair<String,Double>> predictTags(String error, int n) {
-        final String url = "https://127.0.0.1:8081/predict_tags";
+        final String url = "http://127.0.0.1:8081/predict_tags";
         try {
             String response = get(url, error, n);
             List<Map<String,Object>> results = new Gson().fromJson(response, List.class);
