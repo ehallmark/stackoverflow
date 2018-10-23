@@ -17,14 +17,14 @@ public class MinHash implements Serializable {
     private final int k;
     private final int[] shingleSizes;
     private transient Hash[] hashes;
-    private List<Pair<String, int[]>> possibilities;
+    private List<Pair<String, short[]>> possibilities;
     private AtomicInteger cnt = new AtomicInteger(0);
     public MinHash(final int k, final int... shingleSizes) {
         this.k=k;
         this.shingleSizes=shingleSizes;
         this.hashes = new Hash[k];
         for(int i = 0; i < k; i++) {
-            hashes[i] = new Hash(i);
+            hashes[i] = new Hash((short)i);
         }
     }
 
@@ -41,7 +41,7 @@ public class MinHash implements Serializable {
         if(minHash!=null) {
             minHash.hashes = new Hash[minHash.k];
             for(int i = 0; i < minHash.k; i++) {
-                minHash.hashes[i] = new Hash(i);
+                minHash.hashes[i] = new Hash((short)i);
             }
         }
         return minHash;
@@ -57,10 +57,10 @@ public class MinHash implements Serializable {
         }
     }
 
-    private int[] createHashValues(String str) {
-        int[] mins = new int[k * shingleSizes.length];
+    private short[] createHashValues(String str) {
+        short[] mins = new short[k * shingleSizes.length];
         for(int i = 0; i < shingleSizes.length; i++) {
-            int[] m = createHashValues(createShingles(" " +str + " ", shingleSizes[i]));
+            short[] m = createHashValues(createShingles(" " +str + " ", shingleSizes[i]));
             for(int j = 0; j < k; j++) {
                 mins[i*k+j] = m[j];
             }
@@ -68,7 +68,7 @@ public class MinHash implements Serializable {
         return mins;
     }
 
-    private double similarity(int[] h1, int[] h2) {
+    private double similarity(short[] h1, short[] h2) {
         int same = 0;
         for(int i = 0; i < h1.length; i++) {
             if(h1[i]==h2[i]) same++;
@@ -77,13 +77,13 @@ public class MinHash implements Serializable {
     }
 
 
-    private int[] createHashValues(Set<String> shingles) {
-        int[] mins = new int[k];
-        Arrays.fill(mins, Integer.MAX_VALUE);
+    private short[] createHashValues(Set<String> shingles) {
+        short[] mins = new short[k];
+        Arrays.fill(mins, Short.MAX_VALUE);
         for(String shingle : shingles) {
             for(int i = 0; i < k; i++) {
                 Hash hash = hashes[i];
-                int code = hash.hashCode(shingle);
+                short code = hash.hashCode(shingle);
                 if(code < mins[i]) {
                     mins[i] = code;
                 }
@@ -93,19 +93,24 @@ public class MinHash implements Serializable {
     }
 
 
-    private Set<String> createShingles(String str, int shingleSize) {
+    private Set<String> createShingles(String strs, int shingleSize) {
         Set<String> shingles = new HashSet<>();
-        if(shingleSize > 0) {
-            for (int i = 0; i < str.length() - shingleSize; i++) {
-                String sub = str.substring(i, i + shingleSize);
-                if (sub.contains("\n")) continue;
-                shingles.add(sub);
-            }
-        } else {
-            // ngram
-            for(String sub : str.split("\\s+")) {
-                if(sub.length()>0) {
-                    shingles.add(sub);
+        String[] strSplit = strs.toLowerCase().split("\\n");
+        for(String str : strSplit) {
+            if (shingleSize > 0) {
+                for (int i = 0; i < str.length() - shingleSize; i++) {
+                    String sub = str.substring(i, i + shingleSize).trim();
+                    if(sub.length()>0) {
+                        shingles.add(sub);
+                    }
+                }
+            } else {
+                // ngram
+                for (String sub : str.split("\\s+")) {
+                    sub = sub.trim();
+                    if (sub.length() > 0) {
+                        shingles.add(sub);
+                    }
                 }
             }
         }
@@ -116,7 +121,7 @@ public class MinHash implements Serializable {
         if(possibilities==null) {
             throw new IllegalStateException("Must initialize min hash before using it.");
         }
-        int[] code = createHashValues(str);
+        short[] code = createHashValues(str);
 
         return possibilities.stream().map(p->{
             return new Pair<>(p.getKey(), similarity(code, p.getValue()));
@@ -148,13 +153,13 @@ public class MinHash implements Serializable {
 }
 
 class Hash {
-    private final int idx;
-    public Hash(int idx) {
-        this.idx=idx;
+    private final String mod;
+    public Hash(short idx) {
+        this.mod = String.valueOf(Short.hashCode(idx));
     }
 
-    public int hashCode(String str) {
-        return (str+idx).hashCode();
+    public short hashCode(String str) {
+        return (short)(Objects.hash(str, mod) % Short.MAX_VALUE);
         //return Objects.hash(str, idx);
     }
 }

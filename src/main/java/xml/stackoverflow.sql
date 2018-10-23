@@ -171,8 +171,8 @@ insert into tags (
 -- convenience methods to dump and restore database (run from root directory of project)
 
 -- to dump
-pg_dump -Fc --dbname=postgresql://postgres:password@127.0.0.1:5432/stackoverflow > stackoverflow.dump
+pg_dump -Fc --dbname=postgresql://postgres:password@127.0.0.1:5432/stackoverflow -t posts > stackoverflow_posts.dump
 
 -- to restore
-pg_restore -Fc --dbname=postgresql://postgres:password@127.0.0.1:5432/stackoverflow stackoverflow.dump
+pg_restore -Fc --dbname=postgresql://postgres:password@127.0.0.1:5432/stackoverflow -t posts stackoverflow_posts.dump
 

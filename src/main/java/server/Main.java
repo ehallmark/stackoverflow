@@ -2,6 +2,7 @@ package server;
 
 import analysis.error_codes.ErrorCodesModel;
 import analysis.min_hash.MinHash;
+import analysis.python.PythonAdapter;
 import com.google.gson.Gson;
 import database.Database;
 import j2html.tags.ContainerTag;
@@ -94,6 +95,8 @@ public class Main {
                                                                 h5("Please enter any error message, error code, or stack trace."),
                                                                 textarea().attr("style", "width: 100%;").withName("error").withClass("form-control")
                                                         ),br(),
+                                                        label().attr("style", "width: 100%").with(h5("Tags"),select().attr("style", "width: 100%").withName("tags[]").withClass("select_tags").attr("multiple").with(option())),
+                                                        br(),
                                                         button("Search").withClass("btn btn-outline-secondary").withType("submit")
                                                 )
                                         )
@@ -115,11 +118,21 @@ public class Main {
             } else {
                 System.out.println("Recommend questions for: " + errorStr);
                 List<Pair<String, Double>> topAnswers = hash.mostSimilar(errorStr.toLowerCase(), 10);
+                List<Pair<String, Double>> topTags = PythonAdapter.predictTags(errorStr.toLowerCase(), 5);
                 AtomicInteger cnt = new AtomicInteger(0);
                 html = div().withClass("col-12").with(
                         div().withClass("row").with(
+                                div().withClass("col-12").with(
+                                        h5("Relevant Tags"),
+                                        div().with(
+                                            topTags.stream().map(tag->span(tag+" ("+String.format("%.2f",tag.getValue())+")"))
+                                            .collect(Collectors.toList())
+                                        )
+                                )
+                        ),
+                        div().withClass("row").with(
                                 div().withClass("col-12 col-md-6").with(
-                                        h6("Top Answers")
+                                        h5("Top Answers")
                                 ).with(
                                         topAnswers.stream().map(top->div().with(
                                                 div(b(String.valueOf(cnt.incrementAndGet())+". (Score: "+top.getValue()+")")),

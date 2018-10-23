@@ -19,22 +19,12 @@ $(document).ready(function() {
         });
     });
 
-    $('select.beer_selection').select2({
+    $('select.select_tags').select2({
         minimumResultsForSearch: 10,
         closeOnSelect: true,
-        placeholder: 'Select multiple beers...',
+        placeholder: 'Select relevant tags...',
         ajax: {
-            url: '/ajax/beers',
-            dataType: 'json'
-            // Additional AJAX parameters go here; see the end of this chapter for the full code of this example
-        }
-    });
-    $('select.brewery_selection').select2({
-        minimumResultsForSearch: 10,
-        closeOnSelect: true,
-        placeholder: 'Select multiple breweries...',
-        ajax: {
-            url: '/ajax/breweries',
+            url: '/ajax/tags',
             dataType: 'json'
             // Additional AJAX parameters go here; see the end of this chapter for the full code of this example
         }
