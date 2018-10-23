@@ -39,7 +39,7 @@ public class PythonAdapter {
             List<Map<String,Object>> results = new Gson().fromJson(response, List.class);
             List<Pair<String,Double>> ret = new ArrayList<>();
             for(Map<String,Object> result : results) {
-                ret.add(new Pair<>((String)result.get("name"), (Double)result.get("score")));
+                ret.add(new Pair<>((String)result.get("name"), Double.valueOf((String)result.get("score"))));
             }
             return ret;
 
