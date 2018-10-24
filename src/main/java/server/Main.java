@@ -34,7 +34,9 @@ public class Main {
         port(8080);
         staticFiles.externalLocation(new File("public").getAbsolutePath());
         final List<Map<String,Object>> tagData = Database.loadData("tags", "name", "occurrences");
+        tagData.sort((e1,e2)->Integer.compare((Integer)e2.get("occurrences"), (Integer)e1.get("occurrences")));
         final MinHash hash = MinHash.load(ErrorCodesModel.MIN_HASH_FILE);
+        final Map<String, List<Integer>> tagsToAnswerIds = ErrorCodesModel.loadTagToAnswersMap();
 
         get("/ajax/:resource", (req,res)->{
             String resource = req.params("resource");
@@ -60,7 +62,7 @@ public class Main {
                 Map<String, Object> result = new HashMap<>();
                 String name = product.get("name").toString() + "("+product.get("occurrences").toString()+")";
                 result.put("text", name);
-                result.put("id", String.valueOf((Integer)product.get("id")));
+                result.put("id", product.get("name").toString());
                 return result;
             }).filter(m->query==null||m.get("text").toString().toLowerCase().contains(query)).collect(Collectors.toList());
 
@@ -112,13 +114,20 @@ public class Main {
 
         post("/recommend", (req, res) -> {
             String errorStr = req.queryParams("error");
+            String[] tags = req.queryParamsValues("tags[]");
             String html;
             if((errorStr==null || errorStr.length()==0)) {
                 html = "Please specify an error message, error code, or stack trace.";
             } else {
                 System.out.println("Recommend questions for: " + errorStr);
-                List<Pair<String, Double>> topAnswers = hash.mostSimilar(errorStr.toLowerCase(), 10);
+                if(tags!=null && tags.length > 0) {
+                    Set<Integer> validIds = Stream.of(tags).flatMap(t->tagsToAnswerIds.getOrDefault(t, Collections.emptyList()).stream())
+                            .collect(Collectors.toSet());
+                    hash.setValidIds(validIds);
+                }
+                List<Pair<Integer, Double>> topAnswers = hash.mostSimilar(errorStr.toLowerCase(), 10);
                 List<Pair<String, Double>> topTags = PythonAdapter.predictTags(errorStr.toLowerCase(), 5);
+                hash.setValidIds(null);
                 AtomicInteger cnt = new AtomicInteger(0);
                 html = div().withClass("col-12").with(
                         div().withClass("row").with(
@@ -134,12 +143,15 @@ public class Main {
                                 div().withClass("col-12 col-md-6").with(
                                         h5("Top Answers")
                                 ).with(
-                                        topAnswers.stream().map(top->div().with(
-                                                div(b(String.valueOf(cnt.incrementAndGet())+". (Score: "+top.getValue()+")")),
-                                                div(a("Link to Question").attr("href", "https://stackoverflow.com/questions/"+Database.selectParentIdOf(top.getKey())+"/")),
-                                                div().attr("style", "border: black 1px solid; padding: 10px; ").withClass("answer-body").attr("data-html", Database.selectAnswerBody(top.getKey())),
-                                                hr()
-                                        )).collect(Collectors.toList())
+                                        topAnswers.stream().map(top->{
+                                            int parentId = Database.selectParentIdOf(top.getKey());
+                                            return div().with(
+                                                    div(b(String.valueOf(cnt.incrementAndGet())+". (Score: "+top.getValue()+")")),
+                                                    div(a("Link to Question ("+Database.selectTitleOf(parentId)+")").attr("href", "https://stackoverflow.com/questions/"+parentId)+"/"),
+                                                    div().attr("style", "border: black 1px solid; padding: 10px; ").withClass("answer-body").attr("data-html", Database.selectAnswerBody(top.getKey())),
+                                                    hr()
+                                            );
+                                        }).collect(Collectors.toList())
                                 )
                         )
 

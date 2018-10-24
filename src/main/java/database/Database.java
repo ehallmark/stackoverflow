@@ -37,10 +37,10 @@ public class Database {
         return data;
     }
 
-    public static String selectAnswerBody(String answerId)  {
+    public static String selectAnswerBody(int answerId)  {
         try {
             PreparedStatement ps = conn.prepareStatement("select body from posts where id=?");
-            ps.setInt(1, Integer.valueOf(answerId));
+            ps.setInt(1, answerId);
             ResultSet rs = ps.executeQuery();
             String ret = null;
             if (rs.next()) {
@@ -55,14 +55,32 @@ public class Database {
         }
     }
 
-    public static Integer selectParentIdOf(String answerId)  {
+    public static Integer selectParentIdOf(int answerId)  {
         try {
             PreparedStatement ps = conn.prepareStatement("select parent_id from posts where id=?");
-            ps.setInt(1, Integer.valueOf(answerId));
+            ps.setInt(1, answerId);
             ResultSet rs = ps.executeQuery();
             Integer ret = null;
             if (rs.next()) {
                 ret = rs.getInt(1);
+            }
+            rs.close();
+            ps.close();
+            return ret;
+        } catch(Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public static String selectTitleOf(int postId)  {
+        try {
+            PreparedStatement ps = conn.prepareStatement("select title from posts where id=?");
+            ps.setInt(1, postId);
+            ResultSet rs = ps.executeQuery();
+            String ret = null;
+            if (rs.next()) {
+                ret = rs.getString(1);
             }
             rs.close();
             ps.close();

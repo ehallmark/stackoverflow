@@ -166,8 +166,6 @@ insert into tags (
     group by tag
 );
 
-
-
 -- convenience methods to dump and restore database (run from root directory of project)
 
 -- to dump

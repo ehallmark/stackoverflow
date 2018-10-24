@@ -3,6 +3,7 @@ package analysis.min_hash;
 import analysis.error_codes.ErrorCodesModel;
 import javafx.util.Pair;
 import lombok.NonNull;
+import lombok.Setter;
 
 import java.io.*;
 import java.util.*;
@@ -17,8 +18,10 @@ public class MinHash implements Serializable {
     private final int k;
     private final int[] shingleSizes;
     private transient Hash[] hashes;
-    private List<Pair<String, short[]>> possibilities;
+    private List<Pair<Integer, short[]>> possibilities;
     private AtomicInteger cnt = new AtomicInteger(0);
+    @Setter
+    private Set<Integer> validIds;
     public MinHash(final int k, final int... shingleSizes) {
         this.k=k;
         this.shingleSizes=shingleSizes;
@@ -44,10 +47,11 @@ public class MinHash implements Serializable {
                 minHash.hashes[i] = new Hash((short)i);
             }
         }
+        ois.close();
         return minHash;
     }
 
-    public void initialize(Pair<String,String> data) {
+    public void initialize(Pair<Integer,String> data) {
         if(this.possibilities==null) {
             this.possibilities = new LinkedList<>();
         }
@@ -117,13 +121,13 @@ public class MinHash implements Serializable {
         return shingles;
     }
 
-    public List<Pair<String, Double>> mostSimilar(@NonNull String str, int limit) {
+    public List<Pair<Integer, Double>> mostSimilar(@NonNull String str, int limit) {
         if(possibilities==null) {
             throw new IllegalStateException("Must initialize min hash before using it.");
         }
         short[] code = createHashValues(str);
 
-        return possibilities.stream().map(p->{
+        return possibilities.stream().filter(p->validIds==null||validIds.contains(p.getKey())).map(p->{
             return new Pair<>(p.getKey(), similarity(code, p.getValue()));
         }).filter(p->p.getValue()>0).sorted((p1,p2)->Double.compare(p2.getValue(), p1.getValue())).limit(limit)
                 .collect(Collectors.toList());
