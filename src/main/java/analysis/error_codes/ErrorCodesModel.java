@@ -40,14 +40,18 @@ public class ErrorCodesModel {
         while(rs.next()) {
             int answerId = rs.getInt(2);
             String text = rs.getString(1).toLowerCase().trim();
-            String tagStr = rs.getString(2).replace("<", "\n").replace(">","");
-            for(String tag : tagStr.split("\\n")) {
+            String tagStr = rs.getString(3);
+            String[] tags = Stream.of(tagStr.split("><"))
+                    .map(s->s.replace("<","").replace(">",""))
+                    .filter(s->s.length()>0)
+                    .toArray(s->new String[s]);
+            for(String tag : tags) {
                 tagsToAnswerIds.putIfAbsent(tag, new ArrayList<>());
                 tagsToAnswerIds.get(tag).add(answerId);
             }
-            hash.initialize(new Pair<>(answerId, text+"\n"+tagStr));
+            hash.initialize(new Pair<>(answerId, text+"\n"+String.join("\n", tags)));
             if(count%1000==999) {
-                System.out.println("Count: "+count);
+                System.out.println("Count: "+count+", Num tags: "+tagsToAnswerIds.size());
             }
             if(test && count > 100000) break;
             count++;

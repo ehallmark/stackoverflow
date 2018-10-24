@@ -102,8 +102,8 @@ public class MinHash implements Serializable {
         String[] strSplit = strs.toLowerCase().split("\\n");
         for(String str : strSplit) {
             if (shingleSize > 0) {
-                for (int i = 0; i < str.length() - shingleSize; i++) {
-                    String sub = str.substring(i, i + shingleSize).trim();
+                for (int i = 3 - shingleSize; i < str.length() - 3; i++) {
+                    String sub = str.substring(Math.max(0, i), Math.min(str.length(), i + shingleSize)).trim();
                     if(sub.length()>0) {
                         shingles.add(sub);
                     }
