@@ -126,7 +126,7 @@ public class Main {
                     hash.setValidIds(validIds);
                 }
                 List<Pair<Integer, Double>> topAnswers = hash.mostSimilar(errorStr.toLowerCase(), 10);
-                List<Pair<String, Double>> topTags = PythonAdapter.predictTags(errorStr.toLowerCase(), 5);
+                List<Pair<String, Double>> topTags = Collections.emptyList(); // TODO PythonAdapter.predictTags(errorStr.toLowerCase(), 5);
                 hash.setValidIds(null);
                 AtomicInteger cnt = new AtomicInteger(0);
                 html = div().withClass("col-12").with(
