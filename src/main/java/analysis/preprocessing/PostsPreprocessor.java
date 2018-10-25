@@ -11,6 +11,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.DoubleStream;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public class PostsPreprocessor {
@@ -29,6 +31,35 @@ public class PostsPreprocessor {
                 title
         };
     }
+
+
+    public String[] getAllFeaturesFor(ResultSet rs, int startIdx, Map<String,Integer> wordVocabIdxMap,  Map<String,Integer> codeVocabIdxMap, Set<String> availableTags) throws SQLException {
+        String bodyText = rs.getString(startIdx+1);
+        int id = rs.getInt(startIdx+3);
+        int parentId = rs.getInt(startIdx+3);
+        int acceptedAnswerId = rs.getInt(startIdx+3);
+        String body = preprocessBody(bodyText,wordVocabIdxMap, 512);
+        String codeText = getCode(bodyText);
+        String code = preprocess(codeText, codeVocabIdxMap, 512);
+        double[] charFrequency = computeCharFrequency(codeText, charToIndexMap);
+        int[] chars = computeCharTimeSeries(codeText, allCharsToIndexMap, 1024);
+        String tagStr = rs.getString(startIdx+2);
+        String[] tags = Stream.of(tagStr.split("><"))
+                .map(s->s.replace("<","").replace(">",""))
+                .filter(s->s.length()>0 && availableTags.contains(s))
+                .toArray(s->new String[s]);
+        return new String[]{
+                body,
+                code,
+                String.join(",", IntStream.of((int[])chars).mapToObj(d->String.valueOf(d)).collect(Collectors.toList())),
+                String.join(",", DoubleStream.of((double[])charFrequency).mapToObj(d->String.valueOf(d)).collect(Collectors.toList())),
+                ("<"+String.join("><", tags)+">").replace("<>",""),
+                String.valueOf(id),
+                String.valueOf(parentId),
+                String.valueOf(acceptedAnswerId)
+        };
+    }
+
 
     public Object[] getCodeFeaturesFor(ResultSet rs, int startIdx, Map<String,Integer> wordIdxMap, Set<String> availableTags) throws SQLException {
         String code = preprocess(getCode(rs.getString(startIdx+1)), wordIdxMap, 1024);

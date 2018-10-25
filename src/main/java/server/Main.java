@@ -60,7 +60,7 @@ public class Main {
             final String query = _query;
             List<Map<String,Object>> results = data.stream().map(product->{
                 Map<String, Object> result = new HashMap<>();
-                String name = product.get("name").toString() + "("+product.get("occurrences").toString()+")";
+                String name = product.get("name").toString() + " ("+product.get("occurrences").toString()+")";
                 result.put("text", name);
                 result.put("id", product.get("name").toString());
                 return result;
@@ -147,7 +147,7 @@ public class Main {
                                             int parentId = Database.selectParentIdOf(top.getKey());
                                             return div().with(
                                                     div(b(String.valueOf(cnt.incrementAndGet())+". (Score: "+top.getValue()+")")),
-                                                    div(a("Link to Question ("+Database.selectTitleOf(parentId)+")").attr("href", "https://stackoverflow.com/questions/"+parentId)+"/"),
+                                                    div(a("Link to Question ("+Database.selectTitleOf(parentId)+")").attr("href", "https://stackoverflow.com/questions/"+parentId+"/")),
                                                     div().attr("style", "border: black 1px solid; padding: 10px; ").withClass("answer-body").attr("data-html", Database.selectAnswerBody(top.getKey())),
                                                     hr()
                                             );

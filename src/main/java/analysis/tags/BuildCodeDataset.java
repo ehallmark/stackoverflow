@@ -12,9 +12,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
@@ -25,10 +23,15 @@ public class BuildCodeDataset {
 
     public static void main(String[] args) throws Exception {
         boolean test = false;
-        List<String> vocabulary = CSVHelper.readFromCSV("code_vocabulary.csv").stream().map(s->s[0]).collect(Collectors.toList());
-        Set<String> tags = CSVHelper.readFromCSV("tags_custom.csv").stream().map(s->s[0]).collect(Collectors.toSet());
-        Map<String,Integer> vocabIndexMap = IntStream.range(0, vocabulary.size()).mapToObj(i->new Pair<>(vocabulary.get(i), i))
+        List<String> codeVocabulary = CSVHelper.readFromCSV("code_vocabulary.csv").stream().map(s->s[0]).collect(Collectors.toList());
+        List<String> questionVocabulary = CSVHelper.readFromCSV("answers_vocabulary.csv").stream().map(s->s[0]).collect(Collectors.toList());
+        Set<String> tags = CSVHelper.readFromCSV("tags5000.csv").stream().map(s->s[0]).collect(Collectors.toSet());
+        Map<String,Integer> codeVocabIndexMap = IntStream.range(0, codeVocabulary.size()).mapToObj(i->new Pair<>(codeVocabulary.get(i), i))
                 .collect(Collectors.toMap(e->e.getKey(), e->e.getValue()));
+        Map<String,Integer> answerVocabIndexMap = IntStream.range(0, questionVocabulary.size()).mapToObj(i->new Pair<>(questionVocabulary.get(i), i))
+                .collect(Collectors.toMap(e->e.getKey(), e->e.getValue()));
+
+        List<Integer> posts = new LinkedList<>();
 
         final Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost/stackoverflow?user=postgres&password=password&tcpKeepAlive=true");
         conn.setAutoCommit(false);
@@ -39,7 +42,7 @@ public class BuildCodeDataset {
         // start by getting ids
         System.out.println("Starting to read data...");
         CSVWriter writer = new CSVWriter(new BufferedWriter(new FileWriter(new File(DATA_FILE + (test ? ".test.csv" : "")))));
-        PreparedStatement ps = conn.prepareStatement("select coalesce(body,''), coalesce(tags,'') from posts where parent_id is null");
+        PreparedStatement ps = conn.prepareStatement("select coalesce(body,''), coalesce(tags,''), id, coalesce(parent_id,0), coalesce(accepted_answer_id,0) from posts where parent_id is null");
         ps.setFetchSize(100);
         ResultSet rs = ps.executeQuery();
         int count = 0;
@@ -47,14 +50,10 @@ public class BuildCodeDataset {
         int valid = 0;
         final PostsPreprocessor postsPreprocessor = new PostsPreprocessor();
         while(rs.next()) {
-            final Object[] questionFeatures = postsPreprocessor.getCodeFeaturesFor(rs, 0, vocabIndexMap, tags);
-            if(questionFeatures!=null && questionFeatures[2].toString().trim().length()>0) {
-                final String[] featuresPos = new String[]{
-                        questionFeatures[0].toString(),
-                        String.join(" ", DoubleStream.of((double[])questionFeatures[1]).mapToObj(d->String.valueOf(d)).collect(Collectors.toList())),
-                        questionFeatures[2].toString()
-                };
-                writer.writeNext(featuresPos);
+            final String[] questionFeatures = postsPreprocessor.getAllFeaturesFor(rs, 0, answerVocabIndexMap, codeVocabIndexMap, tags);
+            if(questionFeatures!=null && questionFeatures[4].trim().length()>0) {
+                writer.writeNext(questionFeatures);
+                posts.add(rs.getInt(3));
                 valid++;
             }
 
@@ -77,6 +76,9 @@ public class BuildCodeDataset {
         ps.close();
 
         conn.close();
+        System.out.println("Sorting post ids... (n="+posts.size()+")");
+        Collections.sort(posts);
+        CSVHelper.writeToCSV("all_post_ids.csv", posts.stream().map(id->new String[]{String.valueOf(id)}).collect(Collectors.toList()));
         System.out.println("Finished.");
     }
 }
