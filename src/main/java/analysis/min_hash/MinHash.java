@@ -126,7 +126,7 @@ public class MinHash implements Serializable {
             throw new IllegalStateException("Must initialize min hash before using it.");
         }
         short[] code = createHashValues(str);
-
+        System.out.println("Starting similarity...");
         return possibilities.stream().filter(p->validIds==null||validIds.contains(p.getKey())).map(p->{
             return new Pair<>(p.getKey(), similarity(code, p.getValue()));
         }).filter(p->p.getValue()>0).sorted((p1,p2)->Double.compare(p2.getValue(), p1.getValue())).limit(limit)

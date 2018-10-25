@@ -145,6 +145,7 @@ public class Main {
                                 ).with(
                                         topAnswers.stream().map(top->{
                                             int parentId = Database.selectParentIdOf(top.getKey());
+                                            System.out.println("Question found: "+parentId);
                                             return div().with(
                                                     div(b(String.valueOf(cnt.incrementAndGet())+". (Score: "+top.getValue()+")")),
                                                     div(a("Link to Question ("+Database.selectTitleOf(parentId)+")").attr("href", "https://stackoverflow.com/questions/"+parentId+"/")),
