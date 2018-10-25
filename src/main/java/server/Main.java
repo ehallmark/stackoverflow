@@ -144,6 +144,7 @@ public class Main {
                                         h5("Top Answers")
                                 ).with(
                                         topAnswers.stream().map(top->{
+                                            System.out.println("Searching for question id...");
                                             int parentId = Database.selectParentIdOf(top.getKey());
                                             System.out.println("Question found: "+parentId);
                                             return div().with(
