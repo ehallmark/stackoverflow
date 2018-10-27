@@ -120,13 +120,17 @@ public class Main {
                 html = "Please specify an error message, error code, or stack trace.";
             } else {
                 System.out.println("Recommend questions for: " + errorStr);
+                List<Pair<String, Double>> topTags = PythonAdapter.predictTags(errorStr.toLowerCase(), 10);
                 if(tags!=null && tags.length > 0) {
                     Set<Integer> validIds = Stream.of(tags).flatMap(t->tagsToAnswerIds.getOrDefault(t, Collections.emptyList()).stream())
                             .collect(Collectors.toSet());
                     hash.setValidIds(validIds);
+                } else if(topTags!=null && topTags.size()>0) {
+                    Set<Integer> validIds = topTags.stream().filter(t->t.getValue()>0).flatMap(t->tagsToAnswerIds.getOrDefault(t.getKey(), Collections.emptyList()).stream())
+                            .collect(Collectors.toSet());
+                    hash.setValidIds(validIds);
                 }
                 List<Pair<Integer, Double>> topAnswers = hash.mostSimilar(errorStr.toLowerCase(), 10);
-                List<Pair<String, Double>> topTags = PythonAdapter.predictTags(errorStr.toLowerCase(), 10);
                 hash.setValidIds(null);
                 AtomicInteger cnt = new AtomicInteger(0);
                 html = div().withClass("col-12").with(
