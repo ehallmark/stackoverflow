@@ -122,12 +122,12 @@ public class Main {
                 System.out.println("Recommend questions for: " + errorStr);
                 List<Pair<String, Double>> topTags = PythonAdapter.predictTags(errorStr.toLowerCase(), 10);
                 if(tags!=null && tags.length > 0) {
-                    Set<Integer> validIds = Stream.of(tags).flatMap(t->tagsToAnswerIds.getOrDefault(t, Collections.emptyList()).stream())
-                            .collect(Collectors.toSet());
+                    Map<Integer, Double> validIds = Stream.of(tags).flatMap(t->tagsToAnswerIds.getOrDefault(t, Collections.emptyList()).stream().map(id-> new Pair<>(id, 1d)))
+                            .collect(Collectors.groupingBy(e->e.getKey(), Collectors.summingDouble(e->e.getValue())));
                     hash.setValidIds(validIds);
                 } else if(topTags!=null && topTags.size()>0) {
-                    Set<Integer> validIds = topTags.stream().filter(t->t.getValue()>0).flatMap(t->tagsToAnswerIds.getOrDefault(t.getKey(), Collections.emptyList()).stream())
-                            .collect(Collectors.toSet());
+                    Map<Integer, Double> validIds = topTags.stream().filter(t->t.getValue()>0).flatMap(t->tagsToAnswerIds.getOrDefault(t.getKey(), Collections.emptyList()).stream().map(id->new Pair<>(id, t.getValue())))
+                            .collect(Collectors.groupingBy(e->e.getKey(), Collectors.summingDouble(e->e.getValue())));
                     hash.setValidIds(validIds);
                 }
                 List<Pair<Integer, Double>> topAnswers = hash.mostSimilar(errorStr.toLowerCase(), 10);

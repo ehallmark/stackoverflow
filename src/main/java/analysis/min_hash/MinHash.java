@@ -21,7 +21,7 @@ public class MinHash implements Serializable {
     private List<Pair<Integer, short[]>> possibilities;
     private AtomicInteger cnt = new AtomicInteger(0);
     @Setter
-    private Set<Integer> validIds;
+    private Map<Integer, Double> validIds;
     public MinHash(final int k, final int... shingleSizes) {
         this.k=k;
         this.shingleSizes=shingleSizes;
@@ -127,8 +127,9 @@ public class MinHash implements Serializable {
         }
         short[] code = createHashValues(str);
         System.out.println("Starting similarity...");
-        return possibilities.stream().filter(p->validIds==null||validIds.contains(p.getKey())).map(p->{
-            return new Pair<>(p.getKey(), similarity(code, p.getValue()));
+        return possibilities.stream().map(p->new Pair<>(p, validIds==null?1d : validIds.get(p.getKey()))).filter(p->p.getValue()!=null)
+               .map(p->{
+            return new Pair<>(p.getKey().getKey(), similarity(code, p.getKey().getValue()) * p.getValue());
         }).filter(p->p.getValue()>0).sorted((p1,p2)->Double.compare(p2.getValue(), p1.getValue())).limit(limit)
                 .collect(Collectors.toList());
     }
