@@ -128,10 +128,10 @@ public class MinHash implements Serializable {
         short[] code = createHashValues(str);
         System.out.println("Starting similarity...");
         return possibilities.stream().map(p->{
-            System.out.println("P m1: "+p);
+            //System.out.println("P m1: "+p);
             return new Pair<>(p, validIds==null ? 1d : validIds.getOrDefault(p.getKey(), 0.));
         }).filter(p->p.getValue()>0).map(p->{
-            System.out.println("P m2: "+p);
+            //System.out.println("P m2: "+p);
             return new Pair<>(p.getKey().getKey(), similarity(code, p.getKey().getValue()) * p.getValue());
         }).filter(p->p.getValue()>0).sorted((p1,p2)->Double.compare(p2.getValue(), p1.getValue())).limit(limit)
                 .collect(Collectors.toList());
