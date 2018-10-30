@@ -3,7 +3,9 @@ package scrape;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeDriverService;
+import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.firefox.FirefoxDriver;
 import org.openqa.selenium.firefox.FirefoxOptions;
 
@@ -13,6 +15,7 @@ import java.net.URLConnection;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -63,10 +66,8 @@ public class ScrapeElastico {
     public static final String DATA_FOLDER = "/media/ehallmark/tank/data/elastico/";
 
     public static void main(String[] args) throws Exception {
-        scrape("https://discuss.elastic.co/t//", DATA_FOLDER, 50000, true,
-                false, true, false, true);
-        //scrape("https://www.cellartracker.com/notes.asp?iWine=", WINE_NOTES_DATA_FOLDER, 3000000, true,
-        //        true, true, false, false, true);
+        scrape("https://discuss.elastic.co/t//", DATA_FOLDER, 174533, true,
+                true, false, false, false);
     }
 
     static {
@@ -82,10 +83,10 @@ public class ScrapeElastico {
     public static WebDriver newWebDriver() throws Exception {
     //    if(!chromeDriverService.isRunning()) chromeDriverService.start();
         try {
-            FirefoxOptions options = new FirefoxOptions();
-            //options.addArguments("--headless");
+            ChromeOptions options = new ChromeOptions();
+            options.addArguments("--headless");
             //options.setExperimentalOption("prefs", Collections.singletonMap("profile.block_third_party_cookies", true));
-            return new FirefoxDriver(options);
+            return new ChromeDriver(options);
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException("Unable to open driver.");
@@ -109,10 +110,9 @@ public class ScrapeElastico {
     }
 
     public static void scrape(final String urlPrefix, final String folderName, final int bound,
-                              boolean parallel, boolean random, boolean remainingOnly, boolean ingesting, boolean reseed, boolean reviews) throws Exception {
+                              boolean useDriver, boolean random, boolean remainingOnly, boolean ingesting, boolean reseed) throws Exception {
         final Connection conn = null;//DriverManager.getConnection("jdbc:postgresql://localhost/beerdb?user=postgres&password=password&tcpKeepAlive=true");
         //conn.setAutoCommit(false);
-        final boolean examine = false;
         File folder = new File(folderName);
         Set<Integer> alreadySeen = Stream.of(folder.listFiles())
                 .map(f->Integer.valueOf(f.getName().replace(".gzip","")))
@@ -120,7 +120,7 @@ public class ScrapeElastico {
         Set<Integer> alreadyIngested = new HashSet<>();
        // PreparedStatement ps = conn.prepareStatement("select id from wines");
        // ResultSet rs = ps.executeQuery();
-        final WebDriver driver = newWebDriver();
+        final WebDriver driver = useDriver ? newWebDriver() : null;
         try {
          //   while (rs.next()) {
          //       alreadyIngested.add(rs.getInt(1));
@@ -128,21 +128,17 @@ public class ScrapeElastico {
          //   rs.close();
          //   ps.close();
             List<Integer> indices = new ArrayList<>();
-            if(examine) {
-                indices.addAll(alreadySeen);
-            } else {
-                for (int i = 1; i <= bound; i++) {
-                    if (!remainingOnly || !alreadySeen.contains(i)) {
-                        if (ingesting && alreadyIngested.contains(i)) {
-                            continue;
-                        }
-                        indices.add(i);
+            for (int i = 1; i <= bound; i++) {
+                if (!remainingOnly || !alreadySeen.contains(i)) {
+                    if (ingesting && alreadyIngested.contains(i)) {
+                        continue;
                     }
+                    indices.add(i);
                 }
             }
             System.out.println("Num remaining: " + indices.size());
             final Random rand = new Random(System.currentTimeMillis());
-            if (random && !examine) {
+            if (random) {
                 Collections.shuffle(indices, rand);
             }
             //ForkJoinPool service = new ForkJoinPool(1);
@@ -151,50 +147,33 @@ public class ScrapeElastico {
                 //    System.out.println("WAITING FOR QUEUE: "+service.getQueuedSubmissionCount());
                 //    TimeUnit.MILLISECONDS.sleep(1000);
                 //}
-                boolean retry = true;
-                while(retry) {
-                    retry = false;
-                    System.out.println("Starting: " + i);
-                    final String url = urlPrefix + i;
-                    File overviewFile = new File(folder, String.valueOf(i) + ".gzip");
-                    if (!ingesting && (!overviewFile.exists() || reseed)) {
-                        //service.execute(()->{
-                        //WebDriver driver = null;
-                        boolean proceed = true;
-                       /* if (reviews) {
-                            proceed = false;
-                            // check file and see if there are more than 5 reviews to get
-                            File file = new File(new File(WINE_DATA_FOLDER), String.valueOf(i) + ".gzip");
-                            if (file.exists()) {
-                                String page = readFromGzip(file);
-                                Document document = Jsoup.parse(page);
-                                Element next = document.select("#tab_one ul.comments").first();
-                                if (next != null) next = next.nextElementSibling();
-                                if (next != null) {
-                                    if (next.tagName().toLowerCase().startsWith("h") && next.hasClass("end") && next.select("a[href]").size() > 0) {
-                                        System.out.println("HREF: " + next.text());
-                                        proceed = true;
-                                    }
-                                }
-                                if (!proceed) {
-                                    // write file so we don't redo it
-                                    overviewFile.createNewFile();
-                                }
-
-                            }
-                        }*/
-                        if (proceed) {
+                //service.execute(()->{
+                    int retry = 1;
+                    while(retry == 1) {
+                        retry = 0;
+                        System.out.println("Starting: " + i);
+                        final String url = urlPrefix + i;
+                        File overviewFile = new File(folder, String.valueOf(i) + ".gzip");
+                        if (!ingesting && (!overviewFile.exists() || reseed)) {
+                            //WebDriver driver = null;
                             //clearCookies(driver);
                             String page;
                             try {
                                 System.out.println("Searching for: " + url);
                                 try {
-                                    driver.get(url);
-                                    page = driver.getPageSource();
+                                    //driver.get(url);
+                                    if(useDriver) {
+                                        driver.get(url);
+                                       // TimeUnit.MILLISECONDS.sleep(10);
+                                        page = driver.getPageSource();
+                                        clearCookies(driver);
+                                    } else {
+                                        page = readStringFromURL(url);
+                                    }
                                     Document doc = Jsoup.parse(page);
 
-                                    System.out.println("Title: " + doc.html());
-                                    System.out.println("URL: " + driver.getCurrentUrl());
+                                   // System.out.println("Title: " + doc.html());
+                                    System.out.println("URL: " + doc.select("title").text());//driver.getCurrentUrl());
 
                                     //  System.out.println("Page: " + page);
                                 } catch (Exception e) {
@@ -211,33 +190,25 @@ public class ScrapeElastico {
                                 e.printStackTrace();
                             }
                         }
-                        //});
-                    }
-                    if (overviewFile.exists() && examine) {
-                        try {
-                            String page = readFromGzip(overviewFile);
-                            //first round
-                            Document doc = Jsoup.parse(page);
-                            String title = doc.select("head title").text();
-                            if (title.equals("Are you human?")) {
-                                //TimeUnit.MILLISECONDS.sleep(100000);
-                                retry = true;
-                                System.out.println("Retrying "+title+"...");
-                                overviewFile.delete();
-
-                            } else if (title.equals("Security Screen")) {
-                                retry = true;
-                                System.out.println("Retrying "+title+"...");
-                                overviewFile.delete();
+                        if (overviewFile.exists()) {
+                            try {
+                                String page = readFromGzip(overviewFile);
+                                Document doc = Jsoup.parse(page);
+                                if(handleQuestion(doc)) {
+                                    System.out.println("RETRYING: "+url);
+                                    retry ++;
+                                    overviewFile.delete();
+                                }
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                                return;
                             }
-                            //handleWines(i, document, conn);
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            return;
                         }
                     }
-                }
+                //});
             }
+            //service.shutdown();
+            //service.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
 
         } catch(Exception e) {
             e.printStackTrace();
@@ -256,14 +227,19 @@ public class ScrapeElastico {
         }
     }
 
-    private static synchronized void handleWines(int wineId, Document document, Connection conn) throws SQLException{
-        //System.out.println("Doc: "+document.select("#wine_copy_inner").text());
-    }
-
-    private static synchronized void handleWineries(int wineryId, Document document, Connection conn) throws SQLException{
-    }
-
-    private static synchronized void handleReviews(int wineId, Document document, Connection conn) throws SQLException{
-
+    // right now for retrying...
+    private static boolean handleQuestion(Document doc) {
+        String title = doc.select(".title-wrapper .fancy-title").text().trim();
+        String titleHeader = doc.select("title").text().trim();
+        String category = doc.select(".topic-category .category-name").text();
+        if(titleHeader.isEmpty()||titleHeader.equals("Discuss the Elastic Stack")) {
+            // invalid
+            return false;
+        }
+        if(title.isEmpty() || category.isEmpty()) {
+            return true;
+        }
+        System.out.println("Title: "+title+"\nCategory: "+category);
+        return false;
     }
 }
