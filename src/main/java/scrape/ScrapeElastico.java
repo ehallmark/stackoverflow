@@ -14,8 +14,10 @@ import org.openqa.selenium.firefox.FirefoxOptions;
 import java.io.*;
 import java.net.URL;
 import java.net.URLConnection;
-import java.sql.Connection;
-import java.sql.SQLException;
+import java.sql.*;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
@@ -113,8 +115,8 @@ public class ScrapeElastico {
 
     public static void scrape(final String urlPrefix, final String folderName, final int bound,
                               boolean useDriver, boolean random, boolean remainingOnly, boolean ingesting, boolean reseed) throws Exception {
-        final Connection conn = null;//DriverManager.getConnection("jdbc:postgresql://localhost/beerdb?user=postgres&password=password&tcpKeepAlive=true");
-        //conn.setAutoCommit(false);
+        final Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost/elastico?user=postgres&password=password&tcpKeepAlive=true");
+        conn.setAutoCommit(false);
         File folder = new File(folderName);
         Set<Integer> alreadySeen = Stream.of(folder.listFiles())
                 .map(f->Integer.valueOf(f.getName().replace(".gzip","")))
@@ -196,7 +198,7 @@ public class ScrapeElastico {
                             try {
                                 String page = readFromGzip(overviewFile);
                                 Document doc = Jsoup.parse(page);
-                                if(handleQuestion(doc)) {
+                                if(handleQuestion(i, doc, conn)) {
                                     System.out.println("RETRYING: "+url);
                                     retry ++;
                                     overviewFile.delete();
@@ -230,7 +232,7 @@ public class ScrapeElastico {
     }
 
     // right now for retrying... Returns true if we should retry this page (not very intuitive but works)
-    private static boolean handleQuestion(Document doc) {
+    private static boolean handleQuestion(final int postId, Document doc, Connection conn) throws Exception {
         String title = doc.select(".title-wrapper .fancy-title").text().trim();
         String titleHeader = doc.select("title").text().trim();
         String category = doc.select(".topic-category .category-name").text();
@@ -247,17 +249,62 @@ public class ScrapeElastico {
         if(articles.isEmpty()) return false;
 
 
-        String post = articles.first().select(".contents").html();
+
+        String post = articles.first().select(".contents .cooked").html();
         String user = articles.first().select(".names .username").text();
-        System.out.println("Post by "+user+": "+post);
-        System.out.println("Num comments: "+(articles.size()-1));
-        for(int i = 1; i < articles.size(); i++) {
-            String comment = articles.get(i).select(".contents").html();
-            String commentUser = articles.first().select(".names .username").text();
-            System.out.println("\tComment by "+commentUser+": "+comment);
+        int userId = Integer.valueOf(articles.first().attr("data-user-id"));
+        LocalDateTime date = dateFromStr(articles.first().select(".post-date .relative-date").attr("data-time"));
+        int numComments = articles.size() - 1;
+        System.out.println("DATE: "+date);
+       // System.out.println("Post by "+user+": "+post);
+        //System.out.println("Num comments: "+numComments);
+        {
+            PreparedStatement postPs = conn.prepareStatement("insert into posts values (?,?,?,?,?,?,?,?) on conflict (id) do update set (id,title,body,category,creation_date,user_id,username,num_comments) = (excluded.id,excluded.title,excluded.body,excluded.category,excluded.creation_date,excluded.user_id,excluded.username,excluded.num_comments)");
+            postPs.setInt(1, postId);
+            postPs.setString(2, title);
+            postPs.setString(3, post);
+            postPs.setString(4, category);
+            postPs.setTimestamp(5, Timestamp.valueOf(date));
+            postPs.setInt(6, userId);
+            postPs.setString(7, user);
+            postPs.setInt(8, numComments);
+            postPs.executeUpdate();
+            postPs.close();
+        }
+        {
+            PreparedStatement ps = conn.prepareStatement("insert into post_comments values (?,?,?,?,?,?) on conflict (id) do update set (id,post_id,body,creation_date,user_id,username) = (excluded.id,excluded.post_id,excluded.body,excluded.creation_date,excluded.user_id,excluded.username)");
+
+            for (int i = 1; i < articles.size(); i++) {
+                Element commentElem = articles.get(i);
+                String comment = commentElem.select(".contents .cooked").html();
+                String commentUser = commentElem.select(".names .username").text();
+                Integer commentUserId = null;
+                try {
+                    commentUserId = Integer.valueOf(commentElem.attr("data-user-id"));
+                } catch(Exception e) {
+                }
+                LocalDateTime commentDate = dateFromStr(commentElem.select(".post-date .relative-date").attr("data-time"));
+                ps.setInt(1, Integer.valueOf(commentElem.attr("data-post-id")));
+                ps.setInt(2, postId);
+                ps.setString(3, comment);
+                ps.setTimestamp(4, Timestamp.valueOf(commentDate));
+                ps.setInt(5, commentUserId);
+                ps.setString(6, commentUser);
+                ps.executeUpdate();
+                ps.clearParameters();
+            }
+            ps.close();
         }
 
-
+        conn.commit();
         return false;
+    }
+
+    private static LocalDateTime dateFromStr(String dateStr) {
+        LocalDateTime date = null;
+        if(dateStr!=null && dateStr.length()>0) {
+            date = LocalDateTime.ofInstant(Instant.ofEpochMilli(Long.valueOf(dateStr)), ZoneId.systemDefault());
+        }
+        return date;
     }
 }
