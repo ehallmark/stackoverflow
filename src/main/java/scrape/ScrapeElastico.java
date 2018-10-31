@@ -245,7 +245,7 @@ public class ScrapeElastico {
         }
         System.out.println("Title: "+title+"\nCategory: "+category);
 
-        Elements articles = doc.select(".post-stream article");
+        Elements articles = doc.select(".post-stream article").not("article article");
         if(articles.isEmpty()) return false;
 
 
@@ -284,7 +284,13 @@ public class ScrapeElastico {
                 } catch(Exception e) {
                 }
                 LocalDateTime commentDate = dateFromStr(commentElem.select(".post-date .relative-date").attr("data-time"));
-                ps.setInt(1, Integer.valueOf(commentElem.attr("data-post-id")));
+                try {
+                    ps.setInt(1, Integer.valueOf(commentElem.attr("data-post-id")));
+                } catch(Exception e) {
+                    e.printStackTrace();
+                    System.out.println("Comment: "+commentElem.html());
+                    System.exit(1);
+                }
                 ps.setInt(2, postId);
                 ps.setString(3, comment);
                 ps.setTimestamp(4, Timestamp.valueOf(commentDate));
