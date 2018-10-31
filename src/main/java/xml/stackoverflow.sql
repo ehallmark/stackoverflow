@@ -1,4 +1,9 @@
-\connect stackoverflow
+--\connect stackoverflow
+--\connect serverfault
+--\connect unix
+--\connect dba
+--\connect askubuntu
+\connect superuser
 
 drop table badges;
 create table badges (
@@ -42,7 +47,6 @@ create table posts (
     comment_count integer,
     favorite_count integer
 );
-
 
 drop table post_history;
 create table post_history (
@@ -169,8 +173,8 @@ insert into tags (
 -- convenience methods to dump and restore database (run from root directory of project)
 
 -- to dump
-pg_dump -Fc --dbname=postgresql://postgres:password@127.0.0.1:5432/stackoverflow -t posts > stackoverflow_posts.dump
+--pg_dump -Fc --dbname=postgresql://postgres:password@127.0.0.1:5432/stackoverflow -t posts > stackoverflow_posts.dump
 
 -- to restore
-pg_restore -Fc --dbname=postgresql://postgres:password@127.0.0.1:5432/stackoverflow -t posts stackoverflow_posts.dump
+--pg_restore -Fc --dbname=postgresql://postgres:password@127.0.0.1:5432/stackoverflow -t posts stackoverflow_posts.dump
 

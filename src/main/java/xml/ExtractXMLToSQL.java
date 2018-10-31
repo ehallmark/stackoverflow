@@ -21,21 +21,29 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class ExtractXMLToSQL {
-
     public static void main(String[] args) throws Exception {
-        final Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost/stackoverflow?user=postgres&password=password&tcpKeepAlive=true");
+       // run("stackoverflow", "stackoverflow_data");
+       // run("serverfault", "serverfault_data");
+        run("unix", "unix");
+        run("dba", "dba");
+        run("askubuntu", "askubuntu");
+        run("superuser", "superuser");
+    }
+
+    public static void run(String database, String folder) throws Exception {
+        final Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost/"+database+"?user=postgres&password=password&tcpKeepAlive=true");
         conn.setAutoCommit(false);
-        boolean posts = false;
-        boolean badges = false;
-        boolean comments = false;
-        boolean postLinks = false;
-        boolean users = false;
-        boolean votes = false;
-        boolean postHistory = false;
+        boolean posts = true;
+        boolean badges = true;
+        boolean comments = true;
+        boolean postLinks = true;
+        boolean users = true;
+        boolean votes = true;
+        boolean postHistory = true;
 
         // badges
         if (badges) {
-            String filePath = "/media/ehallmark/tank/stackoverflow_data/Badges.xml";
+            String filePath = "/media/ehallmark/tank/"+folder+"/Badges.xml";
             List<String> attrs = Arrays.asList("id", "user_id", "name", "date");
             List<String> attrsXML = attrs.stream().map(attr->attr.replace("_","")).collect(Collectors.toList());
 
@@ -57,7 +65,7 @@ public class ExtractXMLToSQL {
         }
         // comments
         if (comments) {
-            String filePath = "/media/ehallmark/tank/stackoverflow_data/Comments.xml";
+            String filePath = "/media/ehallmark/tank/"+folder+"/Comments.xml";
             List<String> attrs = Arrays.asList("id", "post_id", "score", "text", "creation_date", "user_id");
             List<String> attrsXML = attrs.stream().map(attr->attr.replace("_","")).collect(Collectors.toList());
 
@@ -82,7 +90,7 @@ public class ExtractXMLToSQL {
 
         // Users
         if (postHistory) {
-            String filePath = "/media/ehallmark/tank/stackoverflow_data/PostHistory.xml";
+            String filePath = "/media/ehallmark/tank/"+folder+"/PostHistory.xml";
             List<String> attrs = Arrays.asList("id", "post_history_type_id", "post_id", "revision_guid", "creation_date", "user_id", "user_display_name", "comment", "text", "close_reason_id");
             List<String> attrsXML = attrs.stream().map(attr->attr.replace("_","")).collect(Collectors.toList());
 
@@ -112,7 +120,7 @@ public class ExtractXMLToSQL {
 
         // Post Links
         if (postLinks) {
-            String filePath = "/media/ehallmark/tank/stackoverflow_data/PostLinks.xml";
+            String filePath = "/media/ehallmark/tank/"+folder+"/PostLinks.xml";
             List<String> attrs = Arrays.asList("id", "creation_date", "post_id", "related_post_id", "link_type_id");
             List<String> attrsXML = attrs.stream().map(attr->attr.replace("_","")).collect(Collectors.toList());
 
@@ -136,7 +144,7 @@ public class ExtractXMLToSQL {
 
         // Users
         if (users) {
-            String filePath = "/media/ehallmark/tank/stackoverflow_data/Users.xml";
+            String filePath = "/media/ehallmark/tank/"+folder+"/Users.xml";
             List<String> attrs = Arrays.asList("id", "reputation", "creation_date", "display_name", "email_hash", "last_access_date", "website_url", "location", "age", "about_me", "views", "up_votes", "down_votes");
             List<String> attrsXML = attrs.stream().map(attr->attr.replace("_","")).collect(Collectors.toList());
 
@@ -168,7 +176,7 @@ public class ExtractXMLToSQL {
 
         // Users
         if (votes) {
-            String filePath = "/media/ehallmark/tank/stackoverflow_data/Votes.xml";
+            String filePath = "/media/ehallmark/tank/"+folder+"/Votes.xml";
             List<String> attrs = Arrays.asList("id", "post_id", "vote_type_id", "creation_date", "user_id", "bounty_amount");
             List<String> attrsXML = attrs.stream().map(attr->attr.replace("_","")).collect(Collectors.toList());
 
@@ -193,7 +201,7 @@ public class ExtractXMLToSQL {
 
         // posts
         if (posts) {
-            String filePath = "/media/ehallmark/tank/stackoverflow_data/Posts.xml";
+            String filePath = "/media/ehallmark/tank/"+folder+"/Posts.xml";
             List<String> attrs = Arrays.asList("id", "post_type_id", "parent_id", "accepted_answer_id", "creation_date", "score", "view_count", "body", "owner_user_id", "last_editor_user_id", "last_editor_display_name", "last_edit_date", "last_activity_date", "closed_date", "title", "tags", "answer_count", "comment_count", "favorite_count");
             List<String> attrsXML = attrs.stream().map(attr->attr.replace("_","")).collect(Collectors.toList());
 
@@ -277,7 +285,7 @@ public class ExtractXMLToSQL {
                 }
             }
             if(counter.getAndIncrement() % 1000==999) {
-                System.out.println("Seen: "+counter.get() +" Valid: "+valid.get());
+                System.out.println("Seen "+tableName+": "+counter.get() +" Valid: "+valid.get());
                 try {
                     conn.commit();
                 } catch (Exception e) {
