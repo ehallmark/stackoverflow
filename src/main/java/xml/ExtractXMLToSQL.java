@@ -24,10 +24,10 @@ public class ExtractXMLToSQL {
     public static void main(String[] args) throws Exception {
        // run("stackoverflow", "stackoverflow_data");
        // run("serverfault", "serverfault_data");
-        run("unix", "unix");
-        run("dba", "dba");
-        run("askubuntu", "askubuntu");
-        run("superuser", "superuser");
+       // run("unix", "unix");
+       // run("dba", "dba");
+       // run("askubuntu", "askubuntu");
+       // run("superuser", "superuser");
     }
 
     public static void run(String database, String folder) throws Exception {

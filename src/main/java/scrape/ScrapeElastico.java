@@ -2,6 +2,8 @@ package scrape;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeDriverService;
@@ -67,7 +69,7 @@ public class ScrapeElastico {
 
     public static void main(String[] args) throws Exception {
         scrape("https://discuss.elastic.co/t//", DATA_FOLDER, 174533, true,
-                true, false, false, false);
+                true, false, true, false);
     }
 
     static {
@@ -120,7 +122,7 @@ public class ScrapeElastico {
         Set<Integer> alreadyIngested = new HashSet<>();
        // PreparedStatement ps = conn.prepareStatement("select id from wines");
        // ResultSet rs = ps.executeQuery();
-        final WebDriver driver = useDriver ? newWebDriver() : null;
+        final WebDriver driver = useDriver && !ingesting ? newWebDriver() : null;
         try {
          //   while (rs.next()) {
          //       alreadyIngested.add(rs.getInt(1));
@@ -227,7 +229,7 @@ public class ScrapeElastico {
         }
     }
 
-    // right now for retrying...
+    // right now for retrying... Returns true if we should retry this page (not very intuitive but works)
     private static boolean handleQuestion(Document doc) {
         String title = doc.select(".title-wrapper .fancy-title").text().trim();
         String titleHeader = doc.select("title").text().trim();
@@ -240,6 +242,22 @@ public class ScrapeElastico {
             return true;
         }
         System.out.println("Title: "+title+"\nCategory: "+category);
+
+        Elements articles = doc.select(".post-stream article");
+        if(articles.isEmpty()) return false;
+
+
+        String post = articles.first().select(".contents").html();
+        String user = articles.first().select(".names .username").text();
+        System.out.println("Post by "+user+": "+post);
+        System.out.println("Num comments: "+(articles.size()-1));
+        for(int i = 1; i < articles.size(); i++) {
+            String comment = articles.get(i).select(".contents").html();
+            String commentUser = articles.first().select(".names .username").text();
+            System.out.println("\tComment by "+commentUser+": "+comment);
+        }
+
+
         return false;
     }
 }
