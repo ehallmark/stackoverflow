@@ -13,10 +13,14 @@ import java.util.Collections.min
 import java.util.stream.Stream
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
+import kotlin.collections.HashMap
 
 const val ERROR_CODE_TO_ANSWER_MAP_FILE = "error_codes_to_answer_map.jobj"
 const val POST_TO_DISTINCT_CODES_FILE = "post_to_distinct_num_codes_map.jobj"
 const val CORRELATED_ERROR_CODES_FILE = "correlated_error_codes_map.jobj"
+const val CRASH_PROBABILITY_MAP_FILE = "crash_probability_map.jobj"
+const val targetFatalPercentage = 0.01
+const val alpha = 10.0
 
 data class Solution(val errorCode: String, val postId: Int, val score: Int, val views: Int, val answerId: Int, val occurrences: Int) : Serializable
 
@@ -32,6 +36,14 @@ fun loadErrorCodeMap(): Map<String, List<Solution>> {
 fun loadDistinctCodesPerPostMap(): Map<Int, Int> {
     val ois = ObjectInputStream(GZIPInputStream(BufferedInputStream(FileInputStream(POST_TO_DISTINCT_CODES_FILE))))
     val obj = ois.readObject() as Map<Int, Int>
+    ois.close()
+    return obj
+}
+
+@Throws(IOException::class, ClassNotFoundException::class)
+fun loadCrashProbabilities(): Map<String, Double> {
+    val ois = ObjectInputStream(GZIPInputStream(BufferedInputStream(FileInputStream(CRASH_PROBABILITY_MAP_FILE))))
+    val obj = ois.readObject() as Map<String, Double>
     ois.close()
     return obj
 }
@@ -92,6 +104,8 @@ fun main(args: Array<String>) {
         if (test && count > 100000) break
         count++
     }
+    rs.close()
+    ps.close()
 
     val numDistinctCodesPerPost: Map<Int, Int> = errorCodesByPost.map { kotlin.Pair(it.key, it.value.size) }
             .toMap()
@@ -112,21 +126,52 @@ fun main(args: Array<String>) {
         }
     }
 
+
+
     val correlatedErrors: Map<String, List<Pair<String,Double>>> = correlatedErrorsTmp.map {
         kotlin.Pair(it.key, it.value.groupBy { v -> v }.map { e -> Pair(e.key, (e.value.size.toDouble())/it.value.size) })
     }.toMap()
 
+    val crashCountByPost: MutableMap<Int, Int> = HashMap()
+    val ps2 = conn.prepareStatement("select post_id, occurrences from fatal_errors")
+    val rs2 = ps2.executeQuery()
+    while (rs2.next()) {
+        crashCountByPost[rs2.getInt(1)] = rs2.getInt(2)
+    }
+    rs2.close()
+    ps2.close()
+    val crashProbabilities: MutableMap<String, kotlin.Pair<Double,Double>> = data.map {
+        kotlin.Pair(it.key, kotlin.Pair(alpha* targetFatalPercentage, alpha + it.value.size))
+    }.toMap().toMutableMap()
+
+    for ((error, solutions) in data) {
+        for (solution in solutions) {
+            val postId = solution.postId
+            val crashCount: Int? = crashCountByPost[postId]
+            if (crashCount != null) {
+                val crashProb: kotlin.Pair<Double,Double>? = crashProbabilities[error]
+                if (crashProb != null) {
+                     crashProbabilities[error] = kotlin.Pair(crashProb.first + crashCount, crashProb.second + crashCount - 1)
+                }
+            }
+        }
+    }
+
+    val crashProbabilitiesDouble: MutableMap<String, Double> = crashProbabilities.map {
+        kotlin.Pair(it.key, it.value.first/Math.max(1.0, it.value.second))
+    }.toMap().toMutableMap()
 
     writeDataToFile(data, ERROR_CODE_TO_ANSWER_MAP_FILE)
     writeDataToFile(numDistinctCodesPerPost, POST_TO_DISTINCT_CODES_FILE)
     writeDataToFile(correlatedErrors, CORRELATED_ERROR_CODES_FILE)
+    writeDataToFile(crashProbabilitiesDouble, CRASH_PROBABILITY_MAP_FILE)
 
     println("Error code map size: ${data.size}")
     println("numDistinctCodesPerPost size: ${numDistinctCodesPerPost.size}")
     println("correlatedErrors: ${correlatedErrors.size}")
+    println("crashProbabilities: ${crashProbabilities.size}")
 
-    rs.close()
-    ps.close()
+
     conn.close()
 }
 

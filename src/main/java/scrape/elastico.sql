@@ -24,12 +24,15 @@ create table post_comments (
 );
 
 
--- errors
-select * from posts where lower(title) like any(array[ '%break%', '%broke%', '%went down%', '%shutdown%', '%crash%', '%fail%', '%error%', '%exception%', '%critical%', '%warning%', '%exit%', '%problem%', '%fatal%', '%kill%', '%term%', '%status%']) and category='Elasticsearch' and lower(title || body) like any(ARRAY['%crash%', '%fatal%', '%failure%', '%failed%']) and not title like '%?';
+drop table fatal_errors;
+create table fatal_errors (
+    post_id integer primary key references posts,
+    occurrences integer not null default(1)
+);
 
--- non-errors
-select * from posts where not lower(title||body) like any(array['%fatal%','%crash%', '%error%', '%failure%', '%exception%', '%warning%']) and category='Elasticsearch';
-
+insert into fatal_errors (
+    select id, count(*) from posts where parent_id is null and (lower(title) like any(ARRAY['%crash%', '%went down%', '%segfault%', '%terminated%', '%killed%', '%exit code%', '%downtime%', '%fatal%', '%failure%', '%failed%']) or lower(body) like any(array['%crash%', '%failure%', '%fatal%', '%critical error%'])) group by id
+);
 
 drop table error_codes;
 create table error_codes (

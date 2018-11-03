@@ -24,6 +24,7 @@ public class ErrorCodeSearch {
         final Map<String, List<Solution>> errorCodeData = ErrorCodeRegexModelKt.loadErrorCodeMap();
         final Map<String, List<Pair<String,Double>>> errorCodeCorrelations = ErrorCodeRegexModelKt.loadCorrelatedErrors();
         final Map<Integer, Integer> postsToDistinctCodesMap = ErrorCodeRegexModelKt.loadDistinctCodesPerPostMap();
+        final Map<String, Double> crashProbabilities = ErrorCodeRegexModelKt.loadCrashProbabilities();
         final List<Pair<String,Integer>> errorCodes = errorCodeData.entrySet().stream()
                 .map(e->new Pair<>(e.getKey(), e.getValue().size())).sorted((e1,e2)->Integer.compare(e2.getValue(), e1.getValue()))
                 .collect(Collectors.toList());
@@ -101,8 +102,15 @@ public class ErrorCodeSearch {
             {
                 List<Pair<Solution, Double>> topAnswers = findTopAnswers(errorCode, errorCodeData, postsToDistinctCodesMap, limit);
                 List<Pair<String, Double>> correlatedErrors = errorCodeCorrelations.getOrDefault(errorCode, Collections.emptyList());
+                double crashProb = crashProbabilities.getOrDefault(errorCode, 0.01) * 100;
                 AtomicInteger cnt = new AtomicInteger(0);
                 html = div().withClass("col-12").with(
+                        div().withClass("row").with(
+                                div().withClass("col-12").with(
+                                        h5("Crash Probability"),
+                                        b(String.format("%.2f", crashProb)+"%")
+                                )
+                        ),
                         div().withClass("row").with(
                                 div().withClass("col-12").with(
                                         h5("Correlated Error Codes"),
