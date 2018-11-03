@@ -19,7 +19,7 @@ import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-public class ErrorCodesModel {
+public class ErrorCodeMinHashModel {
     public static final String MIN_HASH_FILE = "error_code_min_hash.jobj";
     public static final String TAG_TO_ANSWER_MAP_FILE = "tag_to_answer_map.jobj";
     public static void main(String[] args) throws Exception {

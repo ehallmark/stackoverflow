@@ -29,4 +29,15 @@ $(document).ready(function() {
             // Additional AJAX parameters go here; see the end of this chapter for the full code of this example
         }
     });
+
+    $('select.error_search').select2({
+        minimumResultsForSearch: 10,
+        closeOnSelect: true,
+        placeholder: 'Search error codes...',
+        ajax: {
+            url: '/ajax/tags',
+            dataType: 'json'
+            // Additional AJAX parameters go here; see the end of this chapter for the full code of this example
+        }
+    });
 });

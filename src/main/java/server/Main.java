@@ -1,21 +1,17 @@
 package server;
 
-import analysis.error_codes.ErrorCodesModel;
+import analysis.error_codes.ErrorCodeMinHashModel;
 import analysis.min_hash.MinHash;
 import analysis.python.PythonAdapter;
 import com.google.gson.Gson;
 import database.Database;
 import j2html.tags.ContainerTag;
 import javafx.util.Pair;
-import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.factory.Nd4j;
-import org.nd4j.linalg.ops.transforms.Transforms;
 
 import java.io.File;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static j2html.TagCreator.*;
@@ -35,8 +31,8 @@ public class Main {
         staticFiles.externalLocation(new File("public").getAbsolutePath());
         final List<Map<String,Object>> tagData = Database.loadData("tags", "name", "occurrences");
         tagData.sort((e1,e2)->Integer.compare((Integer)e2.get("occurrences"), (Integer)e1.get("occurrences")));
-        final MinHash hash = MinHash.load(ErrorCodesModel.MIN_HASH_FILE);
-        final Map<String, List<Integer>> tagsToAnswerIds = ErrorCodesModel.loadTagToAnswersMap();
+        final MinHash hash = MinHash.load(ErrorCodeMinHashModel.MIN_HASH_FILE);
+        final Map<String, List<Integer>> tagsToAnswerIds = ErrorCodeMinHashModel.loadTagToAnswersMap();
 
         get("/ajax/:resource", (req,res)->{
             String resource = req.params("resource");
@@ -108,7 +104,7 @@ public class Main {
                                 div().withId("results")
                         )
                 )
-            )).render();
+            ), "Code Predictor").render();
         });
 
 
@@ -170,13 +166,13 @@ public class Main {
     }
 
 
-    private static ContainerTag htmlWrapper(ContainerTag inner) {
+    public static ContainerTag htmlWrapper(ContainerTag inner, String title) {
         return html().attr("lang","en").with(
                 head().with(
                         meta().attr("charset","utf-8"),
                         meta().attr("http-equiv","X-UA-Compatible").attr("content","IE=edge"),
                         meta().attr("name","viewport").attr("content","width=device-width, initial-scale=1"),
-                        title("Code Predictor"),
+                        title(title),
                         script().withSrc("/js/jquery-3.3.1.min.js"),
                         script().withSrc("/js/jquery-ui-1.12.1.min.js"),
                         script().withSrc("/js/popper.min.js"),

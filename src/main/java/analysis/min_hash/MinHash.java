@@ -1,6 +1,6 @@
 package analysis.min_hash;
 
-import analysis.error_codes.ErrorCodesModel;
+import analysis.error_codes.ErrorCodeMinHashModel;
 import javafx.util.Pair;
 import lombok.NonNull;
 import lombok.Setter;
@@ -9,7 +9,6 @@ import java.io.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -139,7 +138,7 @@ public class MinHash implements Serializable {
 
     public static void main(String[] args) throws Exception {
         System.out.println("Loading min hash...");
-        MinHash hash = MinHash.load(ErrorCodesModel.MIN_HASH_FILE);
+        MinHash hash = MinHash.load(ErrorCodeMinHashModel.MIN_HASH_FILE);
         System.out.println("Loaded.");
         String line = "";
         //Enter data using BufferReader
