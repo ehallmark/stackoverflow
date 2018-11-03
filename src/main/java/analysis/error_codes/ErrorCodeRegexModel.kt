@@ -52,11 +52,15 @@ fun writeDataToFile(data: Map<*,*>, filename: String) {
     oos.close()
 }
 
+fun queryForTable(table: String): String {
+    return "select p.id, p.accepted_answer_id, p.score, p.view_count, e.error_code, e.occurrences from posts as p join $table as e on (p.id=e.post_id) where accepted_answer_id is not null and parent_id is null and closed_date is null and score > 0"
+}
+
 fun main(args: Array<String>) {
     val test = false
     val conn = DriverManager.getConnection("jdbc:postgresql://localhost/stackoverflow?user=postgres&password=password&tcpKeepAlive=true")
     conn.autoCommit = false
-    val ps = conn.prepareStatement("select p.id, p.accepted_answer_id, p.score, p.view_count, e.error_code, e.occurrences from posts as p join error_codes as e on (p.id=e.post_id) where accepted_answer_id is not null and parent_id is null and closed_date is null and score > 0")
+    val ps = conn.prepareStatement(queryForTable("error_codes")+" union all "+queryForTable("exceptions"))
     ps.fetchSize = 10
     val rs = ps.executeQuery()
     var count = 0
