@@ -14,9 +14,9 @@ import java.util.stream.Stream
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 
-const val ERROR_CODE_TO_ANSWER_MAP_FILE = "/media/ehallmark/tank/error_codes_to_answer_map.jobj"
-const val POST_TO_DISTINCT_CODES_FILE = "/media/ehallmark/tank/post_to_distinct_num_codes_map.jobj"
-const val CORRELATED_ERROR_CODES_FILE = "/media/ehallmark/tank/correlated_error_codes_map.jobj"
+const val ERROR_CODE_TO_ANSWER_MAP_FILE = "error_codes_to_answer_map.jobj"
+const val POST_TO_DISTINCT_CODES_FILE = "post_to_distinct_num_codes_map.jobj"
+const val CORRELATED_ERROR_CODES_FILE = "correlated_error_codes_map.jobj"
 
 data class Solution(val errorCode: String, val postId: Int, val score: Int, val views: Int, val answerId: Int, val occurrences: Int) : Serializable
 
