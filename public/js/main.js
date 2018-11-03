@@ -33,9 +33,20 @@ $(document).ready(function() {
     $('select.error_search').select2({
         minimumResultsForSearch: 10,
         closeOnSelect: true,
-        placeholder: 'Search error codes...',
+        placeholder: 'Search Error Codes...',
         ajax: {
-            url: '/ajax/tags',
+            url: '/ajax/errors',
+            dataType: 'json'
+            // Additional AJAX parameters go here; see the end of this chapter for the full code of this example
+        }
+    });
+
+    $('select.exception_search').select2({
+        minimumResultsForSearch: 10,
+        closeOnSelect: true,
+        placeholder: 'Search Exceptions...',
+        ajax: {
+            url: '/ajax/exceptions',
             dataType: 'json'
             // Additional AJAX parameters go here; see the end of this chapter for the full code of this example
         }
