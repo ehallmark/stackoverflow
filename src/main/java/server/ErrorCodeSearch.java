@@ -25,22 +25,28 @@ public class ErrorCodeSearch {
         final Map<String, List<Solution>> errorCodeData = ErrorCodeRegexModelKt.loadErrorCodeMap();
         final Map<String, List<Pair<String,Double>>> errorCodeCorrelations;
         final Map<String, List<Pair<String,Double>>> exceptionCorrelations;
+        final List<Pair<String,Integer>> errorCodes;
+        final List<Pair<String,Integer>> exceptions;
         {
             final Map<String, List<Pair<String,Double>>> correlations = ErrorCodeRegexModelKt.loadCorrelatedErrors();
-            errorCodeCorrelations = correlations.entrySet().stream().filter(e->!(e.getKey().contains("warning")||e.getKey().contains("error")||e.getKey().contains("exception")))
-                    .collect(Collectors.toMap(e->e.getKey(), e->e.getValue()));
-            exceptionCorrelations = correlations.entrySet().stream().filter(e->(e.getKey().contains("warning")||e.getKey().contains("error")||e.getKey().contains("exception")))
-                    .collect(Collectors.toMap(e->e.getKey(), e->e.getValue()));
+
+            errorCodes = errorCodeData.entrySet().stream()
+                .filter(e->!(e.getKey().contains("warning")||e.getKey().contains("error")||e.getKey().contains("exception")))
+                .map(e->new Pair<>(e.getKey(), e.getValue().size())).sorted((e1,e2)->Integer.compare(e2.getValue(), e1.getValue()))
+                .collect(Collectors.toList());
+            exceptions = errorCodeData.entrySet().stream()
+                .filter(e->(e.getKey().contains("warning")||e.getKey().contains("error")||e.getKey().contains("exception")))
+                .map(e->new Pair<>(e.getKey(), e.getValue().size())).sorted((e1,e2)->Integer.compare(e2.getValue(), e1.getValue()))
+                .collect(Collectors.toList());
+
+            errorCodeCorrelations = correlations.entrySet().stream()
+                    .collect(Collectors.toMap(e->e.getKey(), e->e.getValue().stream().filter(e2->!(e2.getKey().contains("warning")||e2.getKey().contains("error")||e2.getKey().contains("exception"))).collect(Collectors.toList())));
+            exceptionCorrelations = correlations.entrySet().stream()
+                    .collect(Collectors.toMap(e->e.getKey(), e->e.getValue().stream().filter(e2->(e2.getKey().contains("warning")||e2.getKey().contains("error")||e2.getKey().contains("exception"))).collect(Collectors.toList())));
 
         }
         final Map<Integer, Integer> postsToDistinctCodesMap = ErrorCodeRegexModelKt.loadDistinctCodesPerPostMap();
         final Map<String, Double> crashProbabilities = ErrorCodeRegexModelKt.loadCrashProbabilities();
-        final List<Pair<String,Integer>> errorCodes = errorCodeData.entrySet().stream()
-                .map(e->new Pair<>(e.getKey(), e.getValue().size())).sorted((e1,e2)->Integer.compare(e2.getValue(), e1.getValue()))
-                .collect(Collectors.toList());
-        final List<Pair<String,Integer>> exceptions = exceptionCorrelations.entrySet().stream()
-                .map(e->new Pair<>(e.getKey(), e.getValue().size())).sorted((e1,e2)->Integer.compare(e2.getValue(), e1.getValue()))
-                .collect(Collectors.toList());
 
         get("/ajax/:resource", (req,res)->{
             Map<String,Object> response = new HashMap<>();
@@ -94,11 +100,12 @@ public class ErrorCodeSearch {
                                         div().withClass("col-12 col-md-6").with(
                                                 form().withClass("error_form").with(
                                                         label().attr("style", "width: 100%").with(
-                                                                h5("Please enter an error code or exception name."),
-                                                                select().withClass("error_search").withType("text").attr("style", "width: 100%;").withName("error_search"),
-                                                                select().withClass("exception_search").withType("text").attr("style", "width: 100%;").withName("exception_search")
+                                                                h5("Please enter an error code and/or an exception name."),
+                                                                select().withClass("error_search").withType("text").attr("style", "width: 100%;").withName("error_search").with(option()),
+                                                                select().withClass("exception_search").withType("text").attr("style", "width: 100%;").withName("exception_search").with(option())
                                                         ),br(),
-                                                        button("Search").withClass("btn btn-outline-secondary").withType("submit")
+                                                        div("Search").attr("onclick", "$(this).parent().submit();").withClass("btn btn-outline-secondary").attr("style", "width: 50%"),
+                                                        div("Clear Inputs").attr("onclick", "$(this).parent().find('select').val(null).trigger('change');").withClass("btn btn-outline-warning").attr("style", "width: 50%")
                                                 )
                                         )
                                 )
@@ -120,9 +127,9 @@ public class ErrorCodeSearch {
             String html;
             {
                 List<Pair<Solution, Double>> topAnswers = findTopAnswers(errorCodeData, postsToDistinctCodesMap, limit, exception, errorCode);
-                List<Pair<String, Double>> correlatedErrors = errorCodeCorrelations.getOrDefault(errorCode, Collections.emptyList());
-                List<Pair<String, Double>> correlatedExceptions = exceptionCorrelations.getOrDefault(exception, Collections.emptyList());
-                double crashProb = crashProbabilities.getOrDefault(errorCode, 0.01) * 100;
+                List<Pair<String, Double>> correlatedErrors = Stream.of(errorCode,exception).flatMap(code->errorCodeCorrelations.getOrDefault(code, Collections.emptyList()).stream()).collect(Collectors.toList());
+                List<Pair<String, Double>> correlatedExceptions = Stream.of(errorCode,exception).flatMap(code->exceptionCorrelations.getOrDefault(code, Collections.emptyList()).stream()).collect(Collectors.toList());
+                double crashProb = Stream.of(errorCode,exception).mapToDouble(code->crashProbabilities.getOrDefault(code, 0.01) * 100).average().orElse(1.0);
                 AtomicInteger cnt = new AtomicInteger(0);
                 html = div().withClass("col-12").with(
                         div().withClass("row").with(
@@ -135,7 +142,7 @@ public class ErrorCodeSearch {
                                 div().withClass("col-12").with(
                                         h5("Correlated Error Codes"),
                                         div().with(
-                                                correlatedErrors.stream().sorted((e1,e2)->Double.compare(e2.getValue(),e1.getValue())).limit(limit).map(tag->span(tag.getKey()+" ("+String.format("%.2f",tag.getValue())+")").attr("style", "margin-right: 15px;"))
+                                                correlatedErrors.stream().filter(e->e.getValue()>0).sorted((e1,e2)->Double.compare(e2.getValue(),e1.getValue())).limit(limit).map(tag->span(tag.getKey()+" ("+String.format("%.2f",tag.getValue())+")").attr("style", "margin-right: 15px;"))
                                                         .collect(Collectors.toList())
 
                                         )
@@ -145,7 +152,7 @@ public class ErrorCodeSearch {
                                 div().withClass("col-12").with(
                                         h5("Correlated Exceptions"),
                                         div().with(
-                                                correlatedExceptions.stream().sorted((e1,e2)->Double.compare(e2.getValue(),e1.getValue())).limit(limit).map(tag->span(tag.getKey()+" ("+String.format("%.2f",tag.getValue())+")").attr("style", "margin-right: 15px;"))
+                                                correlatedExceptions.stream().filter(e->e.getValue()>0).sorted((e1,e2)->Double.compare(e2.getValue(),e1.getValue())).limit(limit).map(tag->span(tag.getKey()+" ("+String.format("%.2f",tag.getValue())+")").attr("style", "margin-right: 15px;"))
                                                         .collect(Collectors.toList())
 
                                         )
@@ -155,7 +162,7 @@ public class ErrorCodeSearch {
                                 div().withClass("col-12").with(
                                         h5("Top Answers"),
                                         div().with(
-                                                topAnswers.stream().map(top-> div().with(
+                                                topAnswers.stream().filter(e->e.getValue()>0).map(top-> div().with(
                                                             div(b(String.valueOf(cnt.incrementAndGet()) + ". (Score: " + top.getValue() + ")")),
                                                             div(a("Link to Question (" + Database.selectTitleOf(top.getKey().getPostId()) + ")").attr("href", "https://stackoverflow.com/questions/" + top.getKey().getPostId() + "/")),
                                                             div().attr("style", "border: black 1px solid; padding: 10px; ").withClass("answer-body").attr("data-html", Database.selectAnswerBody(top.getKey().getAnswerId())),
