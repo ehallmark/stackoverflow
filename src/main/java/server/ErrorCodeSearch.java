@@ -129,7 +129,7 @@ public class ErrorCodeSearch {
                 List<Pair<Solution, Double>> topAnswers = findTopAnswers(errorCodeData, postsToDistinctCodesMap, limit, exception, errorCode);
                 List<Pair<String, Double>> correlatedErrors = Stream.of(errorCode,exception).flatMap(code->errorCodeCorrelations.getOrDefault(code, Collections.emptyList()).stream()).collect(Collectors.toList());
                 List<Pair<String, Double>> correlatedExceptions = Stream.of(errorCode,exception).flatMap(code->exceptionCorrelations.getOrDefault(code, Collections.emptyList()).stream()).collect(Collectors.toList());
-                double crashProb = Stream.of(errorCode,exception).mapToDouble(code->crashProbabilities.getOrDefault(code, 0.01) * 100).average().orElse(1.0);
+                double crashProb = Stream.of(errorCode,exception).mapToDouble(code->crashProbabilities.getOrDefault(code, 0.01) * 100).max().orElse(1.0);
                 AtomicInteger cnt = new AtomicInteger(0);
                 html = div().withClass("col-12").with(
                         div().withClass("row").with(
