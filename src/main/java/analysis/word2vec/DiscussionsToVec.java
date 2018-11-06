@@ -36,14 +36,12 @@ public class DiscussionsToVec {
     }
 
     public static void main(String[] args) throws Exception {
-        AtomicInteger nTestsCounter = new AtomicInteger(0);
-        final int saveEveryNTests = 5;
         final int minWordFrequency = 10;
         final double negativeSampling = -1;
         final double sampling = 0.0001;
         final double learningRate = 0.0001; //0.01;
         final double minLearningRate = 0.000001;// 0.00001;//0.0001;
-        final int testIterations = 4000000;
+        final int testIterations = 10000000;
         final int vectorSize = 256;
         final String modelName = "discussion_2_vec-"+vectorSize;
 
@@ -64,7 +62,9 @@ public class DiscussionsToVec {
                 "tree",
                 "algorithm",
                 "admin",
-                "critical"
+                "critical",
+                "obama",
+                "trump"
         };
 
         final Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost/stackoverflow?user=postgres&password=password&tcpKeepAlive=true");
@@ -88,18 +88,13 @@ public class DiscussionsToVec {
         }
 
         Function<SequenceVectors<VocabWord>,Void> saveFunction = sequenceVectors->{
-            if(nTestsCounter.getAndIncrement()%saveEveryNTests==saveEveryNTests-1) {
-                System.out.println("Saving...");
-                try {
-                    save(LocalDateTime.now(), rootName+modelName, (Word2Vec)sequenceVectors);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
+            System.out.println("Saving...");
+            save(LocalDateTime.now(), rootName+modelName, (Word2Vec)sequenceVectors);
+            System.out.println("Saved.");
             return null;
         };
 
-        final PreparedStatement ps = conn.prepareStatement("select body from posts where body is not null");
+        final PreparedStatement ps = conn.prepareStatement("select body from posts where body is not null order by random()");
         ps.setFetchSize(10);
 
         SentenceIterator iterator = new SentenceIterator() {
