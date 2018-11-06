@@ -82,6 +82,7 @@ public class DiscussionsToVec {
                 if(files.size()>0) {
                     System.out.println("Using model file: "+files.get(files.size()-1).getName());
                     net = WordVectorSerializer.readWord2VecModel(files.get(files.size()-1));
+                    System.out.println("Loaded.");
                 }
             }
         }
@@ -98,7 +99,7 @@ public class DiscussionsToVec {
             return null;
         };
 
-        final PreparedStatement ps = conn.prepareStatement("select body from posts where body is not null and char_length(body) > 1");
+        final PreparedStatement ps = conn.prepareStatement("select body from posts where body is not null");
         ps.setFetchSize(10);
 
         SentenceIterator iterator = new SentenceIterator() {
@@ -211,6 +212,9 @@ public class DiscussionsToVec {
         net = builder.build();
         net.fit();
 
+        System.out.println("Saving final model...");
+        saveFunction.apply(net);
+        System.out.println("Saved.");
         conn.close();
     }
 }
