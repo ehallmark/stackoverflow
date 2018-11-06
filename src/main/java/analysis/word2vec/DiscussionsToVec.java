@@ -6,6 +6,8 @@ import org.deeplearning4j.models.embeddings.loader.WordVectorSerializer;
 import org.deeplearning4j.models.sequencevectors.SequenceVectors;
 import org.deeplearning4j.models.word2vec.VocabWord;
 import org.deeplearning4j.models.word2vec.Word2Vec;
+import org.deeplearning4j.text.sentenceiterator.FileSentenceIterator;
+import org.deeplearning4j.text.sentenceiterator.LineSentenceIterator;
 import org.deeplearning4j.text.sentenceiterator.SentenceIterator;
 import org.deeplearning4j.text.sentenceiterator.SentencePreProcessor;
 import org.deeplearning4j.text.tokenization.tokenizer.TokenPreProcess;
@@ -19,10 +21,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -36,14 +35,15 @@ public class DiscussionsToVec {
     }
 
     public static void main(String[] args) throws Exception {
-        final int minWordFrequency = 10;
+        final int minWordFrequency = 20;
         final double negativeSampling = -1;
         final double sampling = 0.0001;
-        final double learningRate = 0.0001; //0.01;
-        final double minLearningRate = 0.000001;// 0.00001;//0.0001;
-        final int testIterations = 10000000;
+        final double learningRate = 0.01; //0.0001; 0.00001; // 0.000001
+        final double minLearningRate = 0.0001; //0.00001;// 0.000001; // 0.000001
+        final int testIterations = 50000000;
         final int vectorSize = 256;
         final String modelName = "discussion_2_vec-"+vectorSize;
+        boolean usePreviousModel = false;
 
         final String[] words = new String[]{
                 "javascript",
@@ -71,7 +71,6 @@ public class DiscussionsToVec {
         conn.setAutoCommit(false);
 
         Word2Vec net = null;
-        boolean usePreviousModel = true;
         final String rootName = "/media/ehallmark/tank/models/";
         if (usePreviousModel) {
             File folder = new File(rootName);
@@ -96,56 +95,33 @@ public class DiscussionsToVec {
 
         final PreparedStatement ps = conn.prepareStatement("select body from posts where body is not null order by random()");
         ps.setFetchSize(10);
-
+        Random rand = new Random(2352);
+        List<LineSentenceIterator> iterators = Stream.of(WriteDiscussionsDatasetKt.getTopFolder().listFiles()).map(file->new LineSentenceIterator(file)).collect(Collectors.toList());
         SentenceIterator iterator = new SentenceIterator() {
-            private ResultSet rs;
-            private String next;
+            private List<LineSentenceIterator> stillRunning;
             @Override
             public synchronized String nextSentence() {
-                return next;
+                return stillRunning.get(rand.nextInt(stillRunning.size())).nextSentence();
             }
 
             @Override
             public synchronized boolean hasNext() {
-                next = null;
-                try {
-                    if (rs.next()) {
-                        next = rs.getString(1);
-                        if(next != null) {
-                            next = next.replaceAll("([^a-zA-Z-0-9_ ]|-)", " $1 ");
-                        }
-                    }
-                } catch(Exception e) {
-
-                }
-                return next!=null;
+                stillRunning = stillRunning.stream().filter(iter->iter.hasNext()).collect(Collectors.toList());
+                return stillRunning.size() > 0;
             }
 
             @Override
             public void reset() {
-                try {
-                    if(rs!=null && !rs.isClosed()) {
-                        rs.close();
-                    }
-                    rs = ps.executeQuery();
-                } catch(Exception e) {
-                    e.printStackTrace();
+                for (LineSentenceIterator iterator : iterators) {
+                    iterator.reset();
                 }
+                stillRunning = Collections.synchronizedList(new ArrayList<>(iterators));
             }
 
             @Override
             public void finish() {
-                try {
-                    try {
-                        if (rs != null && !rs.isClosed()) {
-                            rs.close();
-                        }
-                    } catch(Exception e2) {
-                        e2.printStackTrace();
-                    }
-                    ps.close();
-                } catch(Exception e) {
-                    e.printStackTrace();
+                for (LineSentenceIterator iterator : iterators) {
+                    iterator.finish();
                 }
             }
 
