@@ -36,12 +36,12 @@ public class DiscussionsToVec {
         final int minWordFrequency = 20;
         final double negativeSampling = -1;
         final double sampling = 0.0001;
-        final double learningRate = 0.01; //0.0001; 0.00001; // 0.000001
-        final double minLearningRate = 0.0001; //0.00001;// 0.000001; // 0.000001
+        final double learningRate = /*0.01;*/ 0.0001; //0.00001; // 0.000001
+        final double minLearningRate = /*0.0001;*/ 0.00001;// 0.000001; // 0.000001
         final int testIterations = 50000000;
         final int vectorSize = 256;
         final String modelName = "discussion_2_vec-"+vectorSize;
-        boolean usePreviousModel = false;
+        boolean usePreviousModel = true;
 
         final String[] words = new String[]{
                 "javascript",
@@ -74,7 +74,7 @@ public class DiscussionsToVec {
             File folder = new File(rootName);
             if(folder.exists()) {
                    // TODO!
-                List<File> files = Stream.of(folder.listFiles()).sorted(Comparator.comparing(f->LocalDateTime.parse(f.getName().replace(rootName+modelName, ""))))
+                List<File> files = Stream.of(folder.listFiles()).sorted(Comparator.comparing(f->LocalDateTime.parse(f.getName().replace(modelName, ""))))
                         .collect(Collectors.toList());
                 if(files.size()>0) {
                     System.out.println("Using model file: "+files.get(files.size()-1).getName());
@@ -164,6 +164,7 @@ public class DiscussionsToVec {
                 .minLearningRate(minLearningRate)
                 .allowParallelTokenization(true)
                 .limitVocabularySize(50000000)
+                .enableScavenger(false)
                 .useAdaGrad(true)
                 .resetModel(newModel)
                 .minWordFrequency(minWordFrequency)
