@@ -6,11 +6,9 @@ import org.deeplearning4j.models.embeddings.loader.WordVectorSerializer;
 import org.deeplearning4j.models.sequencevectors.SequenceVectors;
 import org.deeplearning4j.models.word2vec.VocabWord;
 import org.deeplearning4j.models.word2vec.Word2Vec;
-import org.deeplearning4j.text.sentenceiterator.FileSentenceIterator;
-import org.deeplearning4j.text.sentenceiterator.LineSentenceIterator;
-import org.deeplearning4j.text.sentenceiterator.SentenceIterator;
-import org.deeplearning4j.text.sentenceiterator.SentencePreProcessor;
+import org.deeplearning4j.text.sentenceiterator.*;
 import org.deeplearning4j.text.tokenization.tokenizer.TokenPreProcess;
+import org.deeplearning4j.text.tokenization.tokenizer.preprocessor.CommonPreprocessor;
 import org.deeplearning4j.text.tokenization.tokenizerfactory.DefaultTokenizerFactory;
 import org.deeplearning4j.text.tokenization.tokenizerfactory.TokenizerFactory;
 
@@ -96,7 +94,18 @@ public class DiscussionsToVec {
         final PreparedStatement ps = conn.prepareStatement("select body from posts where body is not null order by random()");
         ps.setFetchSize(10);
         Random rand = new Random(2352);
-        List<LineSentenceIterator> iterators = Stream.of(WriteDiscussionsDatasetKt.getTopFolder().listFiles()).map(file->new LineSentenceIterator(file)).collect(Collectors.toList());
+
+        List<LineSentenceIterator> iterators = Stream.of(WriteDiscussionsDatasetKt.getTopFolder().listFiles())
+                .map(file->{
+                    LineSentenceIterator iter = new LineSentenceIterator(file);
+                    iter.setPreProcessor(new SentencePreProcessor() {
+                        @Override
+                        public String preProcess(String s) {
+                            return s.toLowerCase();
+                        }
+                    });
+                    return iter;
+                }).collect(Collectors.toList());
         SentenceIterator iterator = new SentenceIterator() {
             private List<LineSentenceIterator> stillRunning;
             @Override
@@ -138,12 +147,7 @@ public class DiscussionsToVec {
         iterator.reset();
 
         final TokenizerFactory tokenizerFactory = new DefaultTokenizerFactory();
-        tokenizerFactory.setTokenPreProcessor(new TokenPreProcess() {
-            @Override
-            public String preProcess(String s) {
-                return s;
-            }
-        });
+        tokenizerFactory.setTokenPreProcessor(new CommonPreprocessor());
 
         boolean newModel = net == null;
         Word2Vec.Builder builder = new Word2Vec.Builder()
@@ -159,6 +163,7 @@ public class DiscussionsToVec {
                 .tokenizerFactory(tokenizerFactory)
                 .minLearningRate(minLearningRate)
                 .allowParallelTokenization(true)
+                .limitVocabularySize(50000000)
                 .useAdaGrad(true)
                 .resetModel(newModel)
                 .minWordFrequency(minWordFrequency)
