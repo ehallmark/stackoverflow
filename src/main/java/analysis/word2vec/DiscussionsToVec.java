@@ -35,9 +35,10 @@ public class DiscussionsToVec {
     public static void main(String[] args) throws Exception {
         final int minWordFrequency = 20;
         final double negativeSampling = -1;
+        final int numEpochs = 3;
         final double sampling = 0.0001;
-        final double learningRate = /*0.01;*/ 0.0001; //0.00001; // 0.000001
-        final double minLearningRate = /*0.0001;*/ 0.00001;// 0.000001; // 0.000001
+        final double learningRate = /*0.01; 0.0001;*/ 0.00001; // 0.000001
+        final double minLearningRate = /*0.0001; 0.00001; */  0.000001; // 0.000001
         final int testIterations = 50000000;
         final int vectorSize = 256;
         final String modelName = "discussion_2_vec-"+vectorSize;
@@ -153,7 +154,7 @@ public class DiscussionsToVec {
         Word2Vec.Builder builder = new Word2Vec.Builder()
                 .seed(41)
                 .batchSize(512)
-                .epochs(1) // hard coded to avoid learning rate from resetting
+                .epochs(numEpochs) // hard coded to avoid learning rate from resetting
                 .windowSize(6)
                 .layerSize(vectorSize)
                 .sampling(sampling)
@@ -168,7 +169,7 @@ public class DiscussionsToVec {
                 .useAdaGrad(true)
                 .resetModel(newModel)
                 .minWordFrequency(minWordFrequency)
-                .workers(Math.max(1,Runtime.getRuntime().availableProcessors()))
+                .workers(Math.max(1,Runtime.getRuntime().availableProcessors()-2))
                 .iterations(1)
                 .setVectorsListeners(Collections.singleton(new CustomWordVectorListener(saveFunction,modelName,testIterations,words)))
                 .useHierarchicSoftmax(true)
