@@ -3,6 +3,7 @@ package analysis.word2vec;
 import org.deeplearning4j.models.embeddings.learning.impl.elements.CBOW;
 import org.deeplearning4j.models.embeddings.learning.impl.elements.SkipGram;
 import org.deeplearning4j.models.embeddings.loader.WordVectorSerializer;
+import org.deeplearning4j.models.paragraphvectors.ParagraphVectors;
 import org.deeplearning4j.models.sequencevectors.SequenceVectors;
 import org.deeplearning4j.models.word2vec.VocabWord;
 import org.deeplearning4j.models.word2vec.Word2Vec;
@@ -11,6 +12,7 @@ import org.deeplearning4j.text.tokenization.tokenizer.TokenPreProcess;
 import org.deeplearning4j.text.tokenization.tokenizer.preprocessor.CommonPreprocessor;
 import org.deeplearning4j.text.tokenization.tokenizerfactory.DefaultTokenizerFactory;
 import org.deeplearning4j.text.tokenization.tokenizerfactory.TokenizerFactory;
+import org.nd4j.linalg.api.ndarray.INDArray;
 
 import java.io.File;
 import java.io.IOException;
@@ -66,9 +68,6 @@ public class DiscussionsToVec {
                 "trump"
         };
 
-        final Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost/stackoverflow?user=postgres&password=password&tcpKeepAlive=true");
-        conn.setAutoCommit(false);
-
         Word2Vec net = null;
         final String rootName = "/media/ehallmark/tank/models/";
         if (usePreviousModel) {
@@ -84,6 +83,23 @@ public class DiscussionsToVec {
                 }
             }
         }
+
+        final boolean testOnly = true;
+        if (testOnly) {
+            if(net==null) throw new IllegalStateException("Testing only but model does not exist!");
+            for (String word : words) {
+                INDArray vec = net.lookupTable().vector(word);
+                if(vec!=null) {
+                    Collection<String> lst = net.wordsNearest(vec, 10);
+                    System.out.println("10 Words closest to '" + word + "': " + lst);
+                }
+            }
+            System.exit(0);
+        }
+
+
+        final Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost/stackoverflow?user=postgres&password=password&tcpKeepAlive=true");
+        conn.setAutoCommit(false);
 
         Function<SequenceVectors<VocabWord>,Void> saveFunction = sequenceVectors->{
             System.out.println("Saving...");
