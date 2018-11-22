@@ -32,6 +32,10 @@ public class PostsPreprocessor {
         };
     }
 
+    public int[] getCharsAsTimeSeries(String code, int maxTimeSteps) {
+        return computeCharTimeSeries(code, allCharsToIndexMap, maxTimeSteps);
+    }
+
 
     public String[] getAllFeaturesFor(ResultSet rs, int startIdx, Map<String,Integer> wordVocabIdxMap,  Map<String,Integer> codeVocabIdxMap, Set<String> availableTags) throws SQLException {
         String bodyText = rs.getString(startIdx+1);
@@ -167,7 +171,7 @@ public class PostsPreprocessor {
         for(int i = 0; i < Math.min(t, chars.length); i++) {
             Integer idx = map.get(chars[i]);
             if(idx!=null) {
-                indices[i]  = idx;
+                indices[i]  = idx + 1; // 0 index is unknown char
             }
         }
         return indices;
