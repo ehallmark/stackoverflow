@@ -83,7 +83,7 @@ public class Main {
             return htmlWrapper(div().withClass("container-fluid").with(
                 div().withClass("row").attr("style", "margin-top: 5%;").with(
                         div().withClass("col-12").with(
-                                h4("Error Code Detector")
+                                h4("Code Detector")
                         ),
                         div().withClass("col-12").with(
                                 div().withClass("row").with(
@@ -120,14 +120,14 @@ public class Main {
                 if(tags!=null && tags.length > 0) {
                     Map<Integer, Double> validIds = Stream.of(tags).flatMap(t->tagsToAnswerIds.getOrDefault(t, Collections.emptyList()).stream().map(id-> new Pair<>(id, 1d)))
                             .collect(Collectors.groupingBy(e->e.getKey(), Collectors.summingDouble(e->e.getValue())));
-                    hash.setValidIds(validIds);
+                    //hash.setValidIds(validIds);
                 } else if(topTags!=null && topTags.size()>0) {
                     Map<Integer, Double> validIds = topTags.stream().filter(t->t.getValue()>0).flatMap(t->tagsToAnswerIds.getOrDefault(t.getKey(), Collections.emptyList()).stream().map(id->new Pair<>(id, t.getValue())))
                             .collect(Collectors.groupingBy(e->e.getKey(), Collectors.summingDouble(e->e.getValue())));
-                    hash.setValidIds(validIds);
+                    //hash.setValidIds(validIds);
                 }
-                List<Pair<Integer, Double>> topAnswers = hash.mostSimilar(errorStr.toLowerCase(), 10);
-                hash.setValidIds(null);
+               // List<Pair<Integer, Double>> topAnswers = hash.mostSimilar(errorStr.toLowerCase(), 10);
+               // hash.setValidIds(null);
                 AtomicInteger cnt = new AtomicInteger(0);
                 html = div().withClass("col-12").with(
                         div().withClass("row").with(
@@ -138,7 +138,7 @@ public class Main {
                                             .collect(Collectors.toList())
                                         )
                                 )
-                        ),
+                        )/*, // Question Search,
                         div().withClass("row").with(
                                 div().withClass("col-12 col-md-6").with(
                                         h5("Top Answers")
@@ -155,7 +155,7 @@ public class Main {
                                             );
                                         }).collect(Collectors.toList())
                                 )
-                        )
+                        )*/
 
                 ).render();
 
