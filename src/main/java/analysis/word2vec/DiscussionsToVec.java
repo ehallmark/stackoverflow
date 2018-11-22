@@ -84,6 +84,12 @@ public class DiscussionsToVec {
             }
         }
 
+        final boolean writeToCSV = true;
+        if(writeToCSV) {
+            if(net==null) throw new IllegalStateException("Writing to csv but model does not exist!");
+            Word2VecToCSV.writeToCSV(net, new File("discussions_to_vec_embedding_matrix.csv"));
+        }
+
         final boolean testOnly = true;
         if (testOnly) {
             if(net==null) throw new IllegalStateException("Testing only but model does not exist!");
@@ -108,10 +114,7 @@ public class DiscussionsToVec {
             return null;
         };
 
-        final PreparedStatement ps = conn.prepareStatement("select body from posts where body is not null order by random()");
-        ps.setFetchSize(10);
         Random rand = new Random(2352);
-
         List<LineSentenceIterator> iterators = Stream.of(WriteDiscussionsDatasetKt.getTopFolder().listFiles())
                 .map(file->{
                     LineSentenceIterator iter = new LineSentenceIterator(file);
