@@ -8,6 +8,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 
@@ -19,6 +20,9 @@ public class Word2VecToCSV {
         System.out.println("Matrix shape: "+matrix.shapeInfoToString());
         double[][] data = matrix.toDoubleMatrix();
         System.out.println("Matrix data length: "+data.length);
+        String[] firstLineOfZeroes = new String[data[0].length];
+        Arrays.fill(firstLineOfZeroes, "0.0");
+        writer.writeNext(firstLineOfZeroes);
         for(int i = 0; i < data.length; i++) {
             writer.writeNext(DoubleStream.of(data[i]).mapToObj(d->String.valueOf(d)).toArray(s->new String[s]));
         }

@@ -137,6 +137,9 @@ public class PostsPreprocessor {
         };
     }
 
+    public double[] computeSpecialCharFrequency(String in) {
+        return computeCharFrequency(getCode(in), charToIndexMap);
+    }
 
 
     public static double[] computeCharFrequency(String in, Map<Character, Integer> map) {

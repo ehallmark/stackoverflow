@@ -34,6 +34,22 @@ public class DiscussionsToVec {
         }
     }
 
+    public static Word2Vec load256Model() throws Exception {
+        final String rootName = "/media/ehallmark/tank/models/";
+        File folder = new File(rootName);
+        final String modelName = "discussion_2_vec-256";
+        if(folder.exists()) {
+            // TODO!
+            List<File> files = Stream.of(folder.listFiles()).sorted(Comparator.comparing(f->LocalDateTime.parse(f.getName().replace(modelName, ""))))
+                    .collect(Collectors.toList());
+            if(files.size()>0) {
+                System.out.println("Using model file: "+files.get(files.size()-1).getName());
+                return WordVectorSerializer.readWord2VecModel(files.get(files.size()-1));
+            }
+        }
+        return null;
+    }
+
     public static void main(String[] args) throws Exception {
         final int minWordFrequency = 20;
         final double negativeSampling = -1;
