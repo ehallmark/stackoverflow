@@ -31,8 +31,8 @@ public class Main {
         staticFiles.externalLocation(new File("public").getAbsolutePath());
         final List<Map<String,Object>> tagData = Database.loadData("tags", "name", "occurrences");
         tagData.sort((e1,e2)->Integer.compare((Integer)e2.get("occurrences"), (Integer)e1.get("occurrences")));
-        final MinHash hash = MinHash.load(ErrorCodeMinHashModel.MIN_HASH_FILE);
-        final Map<String, List<Integer>> tagsToAnswerIds = ErrorCodeMinHashModel.loadTagToAnswersMap();
+       // final MinHash hash = MinHash.load(ErrorCodeMinHashModel.MIN_HASH_FILE);
+       // final Map<String, List<Integer>> tagsToAnswerIds = ErrorCodeMinHashModel.loadTagToAnswersMap();
 
         get("/ajax/:resource", (req,res)->{
             String resource = req.params("resource");
@@ -90,7 +90,7 @@ public class Main {
                                         div().withClass("col-12 col-md-6").with(
                                                 form().withClass("error_form").with(
                                                         label().attr("style", "width: 100%").with(
-                                                                h5("Please enter any error message, error code, or stack trace."),
+                                                                h5("Please enter some code to identify relevant tags:"),
                                                                 textarea().attr("style", "width: 100%;").withName("error").withClass("form-control")
                                                         ),br(),
                                                         label().attr("style", "width: 100%").with(h5("Tags"),select().attr("style", "width: 100%").withName("tags[]").withClass("select_tags").attr("multiple").with(option())),
@@ -110,24 +110,25 @@ public class Main {
 
         post("/recommend", (req, res) -> {
             String errorStr = req.queryParams("error");
-            String[] tags = req.queryParamsValues("tags[]");
+            //String[] tags = req.queryParamsValues("tags[]");
             String html;
             if((errorStr==null || errorStr.length()==0)) {
-                html = "Please specify an error message, error code, or stack trace.";
+                html = "No code...";
             } else {
                 System.out.println("Recommend questions for: " + errorStr);
                 List<Pair<String, Double>> topTags = PythonAdapter.predictTags(errorStr.toLowerCase(), 10);
-                if(tags!=null && tags.length > 0) {
+               /* if(tags!=null && tags.length > 0) {
                     Map<Integer, Double> validIds = Stream.of(tags).flatMap(t->tagsToAnswerIds.getOrDefault(t, Collections.emptyList()).stream().map(id-> new Pair<>(id, 1d)))
                             .collect(Collectors.groupingBy(e->e.getKey(), Collectors.summingDouble(e->e.getValue())));
-                    //hash.setValidIds(validIds);
+                    hash.setValidIds(validIds);
                 } else if(topTags!=null && topTags.size()>0) {
                     Map<Integer, Double> validIds = topTags.stream().filter(t->t.getValue()>0).flatMap(t->tagsToAnswerIds.getOrDefault(t.getKey(), Collections.emptyList()).stream().map(id->new Pair<>(id, t.getValue())))
                             .collect(Collectors.groupingBy(e->e.getKey(), Collectors.summingDouble(e->e.getValue())));
-                    //hash.setValidIds(validIds);
+                    hash.setValidIds(validIds);
                 }
-               // List<Pair<Integer, Double>> topAnswers = hash.mostSimilar(errorStr.toLowerCase(), 10);
-               // hash.setValidIds(null);
+                List<Pair<Integer, Double>> topAnswers = hash.mostSimilar(errorStr.toLowerCase(), 10);
+                hash.setValidIds(null);
+               */
                 AtomicInteger cnt = new AtomicInteger(0);
                 html = div().withClass("col-12").with(
                         div().withClass("row").with(
@@ -138,7 +139,7 @@ public class Main {
                                             .collect(Collectors.toList())
                                         )
                                 )
-                        )/*, // Question Search,
+                        )/*,
                         div().withClass("row").with(
                                 div().withClass("col-12 col-md-6").with(
                                         h5("Top Answers")
