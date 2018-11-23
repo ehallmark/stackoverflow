@@ -36,7 +36,7 @@ public class BuildStack2VecDataset {
                 .collect(Collectors.toMap(e->e.getKey(), e->e.getValue()));
         final int numFiles = 1;
         final int maxTimeSteps = 256;
-        Word2Vec word2Vec = DiscussionsToVec.load256Model();
+        final Word2Vec word2Vec = DiscussionsToVec.load256Model();
         if(word2Vec == null) {
             throw new RuntimeException("Unable to load word2vec.");
         }

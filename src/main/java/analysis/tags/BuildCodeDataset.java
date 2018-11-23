@@ -1,9 +1,14 @@
 package analysis.tags;
 
 import analysis.preprocessing.PostsPreprocessor;
+import analysis.word2vec.DiscussionsToVec;
 import com.opencsv.CSVWriter;
 import csv.CSVHelper;
 import javafx.util.Pair;
+import org.deeplearning4j.models.word2vec.Word2Vec;
+import org.deeplearning4j.text.tokenization.tokenizer.preprocessor.CommonPreprocessor;
+import org.deeplearning4j.text.tokenization.tokenizerfactory.DefaultTokenizerFactory;
+import org.deeplearning4j.text.tokenization.tokenizerfactory.TokenizerFactory;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -16,27 +21,17 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 public class BuildCodeDataset {
-    public static final String CLASSIFICATION_DATA_FILE = "/media/ehallmark/tank/stack_tag_code_prediction_data.csv";
-    public static final String SIMILARITY_DATA_FILE = "/media/ehallmark/tank/stack_tag_code_sim_prediction_data.csv";
-
 
     public static void main(String[] args) throws Exception {
         boolean test = false;
-        final boolean buildDatasetForClassification = false;
-        final boolean buildDatasetForSimilarity = true;
-        List<String> codeVocabulary = CSVHelper.readFromCSV("code_vocabulary.csv").stream().map(s->s[0]).collect(Collectors.toList());
-        List<String> questionVocabulary = CSVHelper.readFromCSV("answers_vocabulary.csv").stream().map(s->s[0]).collect(Collectors.toList());
-        Set<String> tags = CSVHelper.readFromCSV("tags5000.csv").stream().map(s->s[0]).collect(Collectors.toSet());
-        Map<String,Integer> codeVocabIndexMap = IntStream.range(0, codeVocabulary.size()).mapToObj(i->new Pair<>(codeVocabulary.get(i), i))
-                .collect(Collectors.toMap(e->e.getKey(), e->e.getValue()));
-        Map<String,Integer> answerVocabIndexMap = IntStream.range(0, questionVocabulary.size()).mapToObj(i->new Pair<>(questionVocabulary.get(i), i))
-                .collect(Collectors.toMap(e->e.getKey(), e->e.getValue()));
 
-        List<Integer> posts = null;
-        if(buildDatasetForClassification) {
-            posts = new LinkedList<>();
+        final int maxTimeSteps = 256;
+        final Word2Vec word2Vec = DiscussionsToVec.load256Model();
+        if(word2Vec == null) {
+            throw new RuntimeException("Unable to load word2vec.");
         }
 
         final Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost/stackoverflow?user=postgres&password=password&tcpKeepAlive=true");
@@ -47,72 +42,78 @@ public class BuildCodeDataset {
 
         // start by getting ids
         System.out.println("Starting to read data...");
-        CSVWriter writer1 = null;
-        if(buildDatasetForClassification) {
-            writer1 = new CSVWriter(new BufferedWriter(new FileWriter(new File(CLASSIFICATION_DATA_FILE + (test ? ".test.csv" : "")))));
-        }
-        CSVWriter writer2 = null;
-        if(buildDatasetForSimilarity) {
-            writer2 = new CSVWriter(new BufferedWriter(new FileWriter(new File(SIMILARITY_DATA_FILE + (test ? ".test.csv" : "")))));
-        }
-        PreparedStatement ps = conn.prepareStatement("select coalesce(body,''), coalesce(tags,''), coalesce(parent_id, id), coalesce(parent_id,0), coalesce(accepted_answer_id,0) from posts");
-        ps.setFetchSize(100);
-        ResultSet rs = ps.executeQuery();
+
+        PreparedStatement ps1 = conn.prepareStatement("select body, parent_body from answers_with_question order by random()");
+        PreparedStatement ps2 = conn.prepareStatement("select body, parent_body from answers_with_question order by random()");
+        ps1.setFetchSize(100);
+        ps2.setFetchSize(100);
+        ResultSet rs1 = ps1.executeQuery();
+        ResultSet rs2 = ps2.executeQuery();
         int count = 0;
         System.out.println("Iterating...");
         int valid = 0;
-        final PostsPreprocessor postsPreprocessor = new PostsPreprocessor();
-        while(rs.next()) {
-            if(buildDatasetForClassification) {
-                if(rs.getInt(4)==0) { // don't want answers (only want questions)
-                    final String[] questionFeatures = postsPreprocessor.getAllFeaturesFor(rs, 0, answerVocabIndexMap, codeVocabIndexMap, tags);
-                    if (questionFeatures != null && questionFeatures[4].trim().length() > 0) {
-                        writer1.writeNext(questionFeatures);
-                        posts.add(rs.getInt(3));
-                        valid++;
-                    }
-                }
+        final TokenizerFactory tokenizerFactory = new DefaultTokenizerFactory();
+        tokenizerFactory.setTokenPreProcessor(new CommonPreprocessor());
+        final Random rand = new Random(1251);
+
+        CSVWriter writer = new CSVWriter(new BufferedWriter(new FileWriter(new File("/media/ehallmark/tank/stack2vec_rnn_encoding_data.csv"))));
+
+        final double falseProb = 0.8;
+        while(rs1.next() && rs2.next()) {
+            final String question = rs1.getString(2);
+            final String answer;
+            final int label;
+            if(rand.nextDouble() < falseProb) {
+                // get false
+                answer = rs2.getString(1);
+                label = 0;
+            } else {
+                answer = rs1.getString(1);
+                label = 1;
             }
-            if(buildDatasetForSimilarity) {
-                final String[] questionFeatures = postsPreprocessor.getAllFeaturesFor(rs, 0, answerVocabIndexMap, codeVocabIndexMap, tags);
-                if (questionFeatures != null) {
-                    writer2.writeNext(questionFeatures);
+
+            if(question.length() > 0 && answer.length() > 0) {
+                String[] features = new String[maxTimeSteps * 2 + 1];
+                List<String> questionTokens = tokenizerFactory.create(question.toLowerCase()).getTokens();
+                List<String> answerTokens = tokenizerFactory.create(answer.toLowerCase()).getTokens();
+                if(questionTokens.size()>5 && answerTokens.size()>5) {
+                    for (int i = 0; i < maxTimeSteps; i++) {
+                        if (questionTokens.size() > i) {
+                            features[i] = word2Vec.hasWord(questionTokens.get(i)) ? String.valueOf((word2Vec.indexOf(questionTokens.get(i)) + 1)) : "0";
+                        } else {
+                            features[i] = "0";
+                        }
+                        if(answerTokens.size() > i) {
+                            features[i + maxTimeSteps] = word2Vec.hasWord(answerTokens.get(i)) ? String.valueOf((word2Vec.indexOf(answerTokens.get(i)) + 1)) : "0";
+                        } else {
+                            features[i + maxTimeSteps] = "0";
+                        }
+                    }
+                    features[maxTimeSteps] = String.valueOf(label);
+                    writer.writeNext(features, false);
                     valid++;
                 }
             }
 
             if (count % 1000 == 999) {
-                System.out.println("Seen answers: " + count + ". Valid: " + valid);
-                if(writer1 != null) {
-                    writer1.flush();
-                }
-                if(writer2 != null) {
-                    writer2.flush();
-                }
+                System.out.println("Seen: " + count + ". Valid: " + valid);
+                writer.flush();
+
                 if (test && count > 100000) {
                     break;
                 }
             }
             count++;
         }
-        if(writer1 != null) {
-            writer1.flush();
-            writer1.close();
-        }
-        if(writer2 != null) {
-            writer2.flush();
-            writer2.close();
-        }
+        writer.flush();
+        writer.close();
 
-        rs.close();
-        ps.close();
+        rs1.close();
+        ps1.close();
+        rs2.close();
+        ps2.close();
         conn.close();
 
-        if(buildDatasetForClassification) {
-            System.out.println("Sorting post ids... (n="+posts.size()+")");
-            Collections.sort(posts);
-            CSVHelper.writeToCSV("all_post_ids.csv", posts.stream().map(id -> new String[]{String.valueOf(id)}).collect(Collectors.toList()));
-        }
         System.out.println("Finished.");
     }
 }
