@@ -20,7 +20,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public class BuildCodeCharacterModel {
-    public static final String DATA_FILE = "/media/ehallmark/tank/stack_code_char_tag_prediction_data.csv";
+    public static final String DATA_FILE = "/media/ehallmark/tank/stack_code_char_tag_prediction_data_1000.csv";
     public static void main(String[] args) throws Exception {
         // this class analyzes posts tags
         boolean test = false;
@@ -28,7 +28,8 @@ public class BuildCodeCharacterModel {
         conn.setAutoCommit(false);
         CSVWriter writer = new CSVWriter(new BufferedWriter(new FileWriter(new File(DATA_FILE + (test ? ".test.csv" : "")))));
 
-        final List<String> tagList = CSVHelper.readFromCSV("tags_custom.csv").stream().map(s->s[0]).collect(Collectors.toList());
+        //final List<String> tagList = CSVHelper.readFromCSV("tags_custom.csv").stream().map(s->s[0]).collect(Collectors.toList());
+        final List<String> tagList = CSVHelper.readFromCSV("tags1000.csv").stream().map(s->s[0]).collect(Collectors.toList());
         Map<String,Integer> tagIndexMap = IntStream.range(0, tagList.size()).mapToObj(i->new Pair<>(i, tagList.get(i)))
                 .collect(Collectors.toMap(e->e.getValue(), e->e.getKey()));
         final Set<String> tags = new HashSet<>(tagList);
