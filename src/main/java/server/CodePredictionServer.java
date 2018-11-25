@@ -3,6 +3,7 @@ package server;
 import analysis.error_codes.ErrorCodeMinHashModel;
 import analysis.min_hash.MinHash;
 import analysis.python.PythonAdapter;
+import analysis.word2vec.DiscussionsToVec;
 import com.google.gson.Gson;
 import database.Database;
 import j2html.tags.ContainerTag;
@@ -18,7 +19,7 @@ import static j2html.TagCreator.*;
 import static j2html.TagCreator.head;
 import static spark.Spark.*;
 
-public class Main {
+public class CodePredictionServer {
     private static String truncateString(String str, int n) {
         if(str==null||str.length()<=n) {
             return str;
@@ -31,9 +32,7 @@ public class Main {
         staticFiles.externalLocation(new File("public").getAbsolutePath());
         final List<Map<String,Object>> tagData = Database.loadData("tags", "name", "occurrences");
         tagData.sort((e1,e2)->Integer.compare((Integer)e2.get("occurrences"), (Integer)e1.get("occurrences")));
-       // final MinHash hash = MinHash.load(ErrorCodeMinHashModel.MIN_HASH_FILE);
-       // final Map<String, List<Integer>> tagsToAnswerIds = ErrorCodeMinHashModel.loadTagToAnswersMap();
-
+        //final Map<String,Integer> wordIndexMap = DiscussionsToVec.loadWordToIndexMap();
         get("/ajax/:resource", (req,res)->{
             String resource = req.params("resource");
             final List<Map<String,Object>> data;
@@ -93,8 +92,8 @@ public class Main {
                                                                 h5("Please enter some code to identify relevant tags:"),
                                                                 textarea().attr("style", "width: 100%;").withName("error").withClass("form-control")
                                                         ),br(),
-                                                        label().attr("style", "width: 100%").with(h5("Tags"),select().attr("style", "width: 100%").withName("tags[]").withClass("select_tags").attr("multiple").with(option())),
-                                                        br(),
+                                                        /*label().attr("style", "width: 100%").with(h5("Tags"),select().attr("style", "width: 100%").withName("tags[]").withClass("select_tags").attr("multiple").with(option())),
+                                                        br(),*/
                                                         button("Search").withClass("btn btn-outline-secondary").withType("submit")
                                                 )
                                         )
@@ -116,7 +115,7 @@ public class Main {
                 html = "No code...";
             } else {
                 System.out.println("Recommend questions for: " + errorStr);
-                List<Pair<String, Double>> topTags = PythonAdapter.predictTags(errorStr.toLowerCase(), 10);
+                List<Pair<String, Double>> topTags = PythonAdapter.predictCodeCharLevel(errorStr.toLowerCase(), 10);
                /* if(tags!=null && tags.length > 0) {
                     Map<Integer, Double> validIds = Stream.of(tags).flatMap(t->tagsToAnswerIds.getOrDefault(t, Collections.emptyList()).stream().map(id-> new Pair<>(id, 1d)))
                             .collect(Collectors.groupingBy(e->e.getKey(), Collectors.summingDouble(e->e.getValue())));

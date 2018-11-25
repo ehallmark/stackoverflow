@@ -1,5 +1,6 @@
 package analysis.word2vec;
 
+import database.Database;
 import org.deeplearning4j.models.embeddings.learning.impl.elements.CBOW;
 import org.deeplearning4j.models.embeddings.learning.impl.elements.SkipGram;
 import org.deeplearning4j.models.embeddings.loader.WordVectorSerializer;
@@ -14,8 +15,7 @@ import org.deeplearning4j.text.tokenization.tokenizerfactory.DefaultTokenizerFac
 import org.deeplearning4j.text.tokenization.tokenizerfactory.TokenizerFactory;
 import org.nd4j.linalg.api.ndarray.INDArray;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -48,6 +48,30 @@ public class DiscussionsToVec {
             }
         }
         return null;
+    }
+
+
+    public static Map<String,Integer> loadWordToIndexMap() throws Exception {
+        try(ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(new FileInputStream(new File("discussion2VecIndexMap.jobj"))))) {
+            return (Map<String,Integer>)ois.readObject();
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static void saveWordToIndexMap(Word2Vec word2Vec) throws Exception {
+        Map<String,Integer> map = new HashMap<>();
+        for (VocabWord word : word2Vec.getVocab().vocabWords()) {
+            map.put(word.getLabel(), word2Vec.indexOf(word.getLabel()));
+        }
+        System.out.println("Saving vocab map with size: "+map.size());
+        try(ObjectOutputStream ois = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream(new File("discussion2VecIndexMap.jobj"))))) {
+            ois.writeObject(map);
+            ois.flush();
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public static void main(String[] args) throws Exception {
@@ -100,10 +124,17 @@ public class DiscussionsToVec {
             }
         }
 
-        final boolean writeToCSV = true;
+        final boolean writeToCSV = false;
         if(writeToCSV) {
             if(net==null) throw new IllegalStateException("Writing to csv but model does not exist!");
             Word2VecToCSV.writeToCSV(net, new File("discussions_to_vec_embedding_matrix.csv"));
+        }
+
+        final boolean writeVocabMap = true;
+        if(writeVocabMap) {
+            if(net==null) throw new IllegalStateException("Writing vocab map but model does not exist!");
+            saveWordToIndexMap(net);
+            System.exit(0);
         }
 
         final boolean testOnly = true;

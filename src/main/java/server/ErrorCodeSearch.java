@@ -1,6 +1,5 @@
 package server;
 
-import analysis.error_codes.ErrorCodeMinHashModel;
 import analysis.error_codes.ErrorCodeRegexModelKt;
 import analysis.error_codes.Solution;
 import com.google.gson.Gson;
@@ -90,7 +89,7 @@ public class ErrorCodeSearch {
 
         get("/", (req, res)->{
             req.session(true);
-            return Main.htmlWrapper(div().withClass("container-fluid").with(
+            return CodePredictionServer.htmlWrapper(div().withClass("container-fluid").with(
                 div().withClass("row").attr("style", "margin-top: 5%;").with(
                         div().withClass("col-12").with(
                                 h4("Error Code Search")

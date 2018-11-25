@@ -23,13 +23,13 @@ import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-public class BuildCodeDataset {
+public class BuildStack2VecRnnEncodingWithAnswersDataset {
 
     public static void main(String[] args) throws Exception {
         boolean test = false;
 
         final int maxTimeSteps = 256;
-        final Word2Vec word2Vec = DiscussionsToVec.load256Model();
+        final Map<String,Integer> word2Vec = DiscussionsToVec.loadWordToIndexMap();
         if(word2Vec == null) {
             throw new RuntimeException("Unable to load word2vec.");
         }
@@ -56,7 +56,7 @@ public class BuildCodeDataset {
         tokenizerFactory.setTokenPreProcessor(new CommonPreprocessor());
         final Random rand = new Random(1251);
 
-        CSVWriter writer = new CSVWriter(new BufferedWriter(new FileWriter(new File("/media/ehallmark/tank/stack2vec_rnn_encoding_data.csv"))));
+        CSVWriter writer = new CSVWriter(new BufferedWriter(new FileWriter(new File("/media/ehallmark/tank/stack2vec_rnn_encoding_with_answer_data.csv"))));
 
         final double falseProb = 0.8;
         while(rs1.next() && rs2.next()) {
@@ -79,12 +79,12 @@ public class BuildCodeDataset {
                 if(questionTokens.size()>5 && answerTokens.size()>5) {
                     for (int i = 0; i < maxTimeSteps; i++) {
                         if (questionTokens.size() > i) {
-                            features[i] = word2Vec.hasWord(questionTokens.get(i)) ? String.valueOf((word2Vec.indexOf(questionTokens.get(i)) + 1)) : "0";
+                            features[i] = word2Vec.containsKey(questionTokens.get(i)) ? String.valueOf((word2Vec.get(questionTokens.get(i)) + 1)) : "0";
                         } else {
                             features[i] = "0";
                         }
                         if(answerTokens.size() > i) {
-                            features[i + maxTimeSteps] = word2Vec.hasWord(answerTokens.get(i)) ? String.valueOf((word2Vec.indexOf(answerTokens.get(i)) + 1)) : "0";
+                            features[i + maxTimeSteps] = word2Vec.containsKey(answerTokens.get(i)) ? String.valueOf((word2Vec.get(answerTokens.get(i)) + 1)) : "0";
                         } else {
                             features[i + maxTimeSteps] = "0";
                         }
