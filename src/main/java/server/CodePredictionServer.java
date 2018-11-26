@@ -133,8 +133,8 @@ public class CodePredictionServer {
                         div().withClass("row").with(
                                 div().withClass("col-12").with(
                                         h5("Relevant Tags"),
-                                        div().with(
-                                            topTags.stream().map(tag->span(tag.getKey()+" ("+String.format("%.2f",tag.getValue())+")").attr("style", "margin-right: 15px;"))
+                                        ol().with(
+                                            topTags.stream().map(tag->li(tag.getKey()).with(b(String.format("%.2f",tag.getValue()*100)+"%")).attr("style", "margin-right: 15px;"))
                                             .collect(Collectors.toList())
                                         )
                                 )
