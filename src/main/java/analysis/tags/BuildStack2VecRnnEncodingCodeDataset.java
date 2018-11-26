@@ -20,6 +20,7 @@ public class BuildStack2VecRnnEncodingCodeDataset {
 
     public static void main(String[] args) throws Exception {
         boolean test = false;
+        boolean useAnswers = true;
 
         final int maxTimeSteps = 256;
         final Map<String,Integer> word2Vec = DiscussionsToVec.loadWordToIndexMap();
@@ -36,7 +37,11 @@ public class BuildStack2VecRnnEncodingCodeDataset {
         // start by getting ids
         System.out.println("Starting to read data...");
 
-        PreparedStatement ps = conn.prepareStatement("select body from posts where body is not null and parent_id is null");
+        String sql = "select body from posts where body is not null";
+        if(!useAnswers) {
+            sql += " and parent_id is null";
+        }
+        PreparedStatement ps = conn.prepareStatement(sql);
         ps.setFetchSize(100);
         ResultSet rs = ps.executeQuery();
         int count = 0;
@@ -45,7 +50,14 @@ public class BuildStack2VecRnnEncodingCodeDataset {
         final TokenizerFactory tokenizerFactory = new DefaultTokenizerFactory();
         tokenizerFactory.setTokenPreProcessor(new CommonPreprocessor());
 
-        CSVWriter writer = new CSVWriter(new BufferedWriter(new FileWriter(new File("/media/ehallmark/tank/stack2vec_rnn_encoding_data.csv"))));
+        String filename = "/media/ehallmark/tank/stack2vec_rnn_encoding_data";
+        if(useAnswers) {
+            filename += "_with_answers.csv";
+        } else {
+            filename += ".csv";
+        }
+
+        CSVWriter writer = new CSVWriter(new BufferedWriter(new FileWriter(new File(filename))));
 
         while(rs.next()) {
             final String question = rs.getString(1);
