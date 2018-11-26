@@ -134,7 +134,7 @@ public class CodePredictionServer {
                                 div().withClass("col-12").with(
                                         h5("Relevant Tags"),
                                         ol().with(
-                                            topTags.stream().map(tag->li(tag.getKey()).with(b(String.format("%.2f",tag.getValue()*100)+"%")).attr("style", "margin-right: 15px;"))
+                                            topTags.stream().map(tag->li().with(b(tag.getKey()),span(String.format("%.2f",tag.getValue()*100)+"%").attr("style", "margin-left: 10px")))
                                             .collect(Collectors.toList())
                                         )
                                 )
