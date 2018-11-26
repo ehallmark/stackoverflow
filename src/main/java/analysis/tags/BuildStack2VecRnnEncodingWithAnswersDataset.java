@@ -89,7 +89,7 @@ public class BuildStack2VecRnnEncodingWithAnswersDataset {
                             features[i + maxTimeSteps] = "0";
                         }
                     }
-                    features[maxTimeSteps] = String.valueOf(label);
+                    features[maxTimeSteps*2] = String.valueOf(label);
                     writer.writeNext(features, false);
                     valid++;
                 }
