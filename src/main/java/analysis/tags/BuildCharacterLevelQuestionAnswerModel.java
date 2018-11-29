@@ -27,8 +27,8 @@ public class BuildCharacterLevelQuestionAnswerModel {
         conn.setAutoCommit(false);
         CSVWriter writer = new CSVWriter(new BufferedWriter(new FileWriter(new File(DATA_FILE + (test ? ".test.csv" : "")))));
 
-        PreparedStatement ps1 = conn.prepareStatement("select body, tags from posts where parent_id is null");
-        PreparedStatement ps2 = conn.prepareStatement("select body, tags from posts where parent_id is not null");
+        PreparedStatement ps1 = conn.prepareStatement("select body, tags from posts where parent_id is null order by random() limit 5000000");
+        PreparedStatement ps2 = conn.prepareStatement("select body, tags from posts where parent_id is not null order by random() limit 5000000");
         ps1.setFetchSize(10);
         ps2.setFetchSize(10);
         ResultSet rs1 = ps1.executeQuery();
