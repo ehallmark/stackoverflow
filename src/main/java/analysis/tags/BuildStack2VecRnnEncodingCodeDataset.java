@@ -13,6 +13,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -21,6 +22,7 @@ public class BuildStack2VecRnnEncodingCodeDataset {
     public static void main(String[] args) throws Exception {
         boolean test = false;
         boolean useAnswers = true;
+        boolean forPredictions = true;
 
         final int maxTimeSteps = 256;
         final Map<String,Integer> word2Vec = DiscussionsToVec.loadWordToIndexMap();
@@ -37,7 +39,7 @@ public class BuildStack2VecRnnEncodingCodeDataset {
         // start by getting ids
         System.out.println("Starting to read data...");
 
-        String sql = "select body from posts where body is not null";
+        String sql = "select body, id from posts where body is not null";
         if(!useAnswers) {
             sql += " and parent_id is null";
         }
@@ -56,12 +58,14 @@ public class BuildStack2VecRnnEncodingCodeDataset {
         } else {
             filename += ".csv";
         }
+        if(forPredictions) {
+            filename += ".predict";
+        }
 
         CSVWriter writer = new CSVWriter(new BufferedWriter(new FileWriter(new File(filename))));
-
         while(rs.next()) {
             final String question = rs.getString(1);
-            final int label = 1;
+            final int label = forPredictions ? rs.getInt(2) : 1;
 
             if(question.length() > 0) {
                 String[] features = new String[maxTimeSteps + 1];

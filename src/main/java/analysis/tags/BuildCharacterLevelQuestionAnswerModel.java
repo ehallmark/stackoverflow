@@ -4,6 +4,7 @@ import analysis.preprocessing.PostsPreprocessor;
 import com.opencsv.CSVWriter;
 import csv.CSVHelper;
 import javafx.util.Pair;
+import org.jsoup.Jsoup;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -41,8 +42,8 @@ public class BuildCharacterLevelQuestionAnswerModel {
         final int maxTimeSteps = 1024;
         String[] features = new String[maxTimeSteps + 1];
         while(rs1.next() && rs2.next()) {
-            String question = rs1.getString(1);
-            String answer = rs2.getString(1);
+            String question = Jsoup.parse(rs1.getString(1)).text();
+            String answer = Jsoup.parse(rs2.getString(1)).text();
             totalCodeLength += (question.length()+answer.length())/2;
             totalCodeCount ++;
             int[] charFeatures1 = postsPreprocessor.getCharsAsTimeSeries(question, maxTimeSteps);
