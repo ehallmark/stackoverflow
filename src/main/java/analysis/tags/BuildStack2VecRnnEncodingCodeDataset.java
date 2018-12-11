@@ -73,7 +73,7 @@ public class BuildStack2VecRnnEncodingCodeDataset {
                 if(questionTokens.size()>5) {
                     for (int i = 0; i < maxTimeSteps; i++) {
                         if (questionTokens.size() > i) {
-                            features[i] = word2Vec.containsKey(questionTokens.get(i)) ? String.valueOf((word2Vec.get(questionTokens.get(i)) + 1)) : "0";
+                            features[i] = word2Vec.containsKey(questionTokens.get(i)) ? String.valueOf((word2Vec.get(questionTokens.get(i)))) : "0";
                         } else {
                             features[i] = "0";
                         }
