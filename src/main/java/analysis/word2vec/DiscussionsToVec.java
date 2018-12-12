@@ -93,25 +93,19 @@ public class DiscussionsToVec {
         boolean usePreviousModel = true;
 
         final String[] words = new String[]{
-                "javascript",
-                "exception",
-                "null",
-                "void",
-                "kotlin",
-                "elasticsearch",
-                "crash",
-                "failure",
-                "error",
-                "unknown",
-                "java",
-                "c++",
-                "public",
-                "tree",
-                "algorithm",
-                "admin",
-                "critical",
-                "obama",
-                "trump"
+                "get",
+                "post",
+                "put",
+                "delete",
+                "patch",
+                "kill",
+                "destroy",
+                "show",
+                "retrieve",
+                "edit",
+                "change",
+                "create",
+                "new"
         };
 
         Word2Vec net = null;
@@ -136,7 +130,7 @@ public class DiscussionsToVec {
             Word2VecToCSV.writeToCSV(net, new File("/backup/data/discussions_to_vec_embedding_matrix.csv"));
         }
 
-        final boolean writeVocabMap = true;
+        final boolean writeVocabMap = false;
         if(writeVocabMap) {
             if(net==null) throw new IllegalStateException("Writing vocab map but model does not exist!");
             saveWordToIndexMap(net);
@@ -149,8 +143,8 @@ public class DiscussionsToVec {
             for (String word : words) {
                 INDArray vec = net.lookupTable().vector(word);
                 if(vec!=null) {
-                    Collection<String> lst = net.wordsNearest(vec, 10);
-                    System.out.println("10 Words closest to '" + word + "': " + lst);
+                    Collection<String> lst = net.wordsNearest(vec, 20);
+                    System.out.println("20 Words closest to '" + word + "': " + lst);
                 }
             }
             System.exit(0);
